@@ -1,40 +1,8 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
-const THEME_KEY = "alphabet-rush-theme";
-
 function NotFound() {
-  const [theme, setTheme] = useState(() => {
-    if (typeof window === "undefined") {
-      return "dark";
-    }
-
-    return window.localStorage.getItem(THEME_KEY) || "dark";
-  });
-
-  useEffect(() => {
-    window.localStorage.setItem(THEME_KEY, theme);
-  }, [theme]);
-
-  const isDark = theme === "dark";
-
   return (
-    <main className="not-found-page" data-theme={theme}>
-      <button
-        type="button"
-        className="theme-toggle"
-        onClick={() => setTheme(isDark ? "light" : "dark")}
-        aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-        title={isDark ? "Light mode" : "Dark mode"}
-      >
-        <span className="theme-toggle-icon" aria-hidden="true">
-          {isDark ? "☀️" : "🌙"}
-        </span>
-        <span className="theme-toggle-label">
-          {isDark ? "Light" : "Dark"}
-        </span>
-      </button>
-
+    <main className="not-found-page">
       <div className="not-found-orb orb-one" />
       <div className="not-found-orb orb-two" />
 
