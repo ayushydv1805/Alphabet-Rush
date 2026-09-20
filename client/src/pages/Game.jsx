@@ -1,15 +1,13 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import socket from "../socket";
+
 function Game() {
   const location = useLocation();
-const navigate = useNavigate();
+  const navigate = useNavigate();
   const gameData = location.state;
 
-  const [timeLeft, setTimeLeft] = useState(
-    gameData?.timeLimit || 60
-  );
-
+  const [timeLeft, setTimeLeft] = useState(gameData?.timeLimit || 60);
   const [answers, setAnswers] = useState({
     name: "",
     place: "",
@@ -17,12 +15,8 @@ const navigate = useNavigate();
     animal: "",
     food: "",
   });
-
   const [submitted, setSubmitted] = useState(false);
-const [submittedPlayers, setSubmittedPlayers] = useState([]);
-  // =========================
-  // TIMER
-  // =========================
+  const [submittedPlayers, setSubmittedPlayers] = useState([]);
 
   useEffect(() => {
     if (!gameData || submitted) {
@@ -38,205 +32,144 @@ const [submittedPlayers, setSubmittedPlayers] = useState([]);
       setTimeLeft((previousTime) => previousTime - 1);
     }, 1000);
 
-    return () => {
-      clearInterval(timer);
-    };
+    return () => clearInterval(timer);
   }, [timeLeft, gameData, submitted]);
 
-// =========================
-// PLAYER SUBMISSION STATUS
-// =========================
+  useEffect(() => {
+    const handlePlayerSubmitted = (playerData) => {
+      setSubmittedPlayers((previousPlayers) => {
+        if (previousPlayers.includes(playerData.playerId)) {
+          return previousPlayers;
+        }
 
-useEffect(() => {
-  const handlePlayerSubmitted = (playerData) => {
-    setSubmittedPlayers((previousPlayers) => {
-      if (previousPlayers.includes(playerData.playerId)) {
-        return previousPlayers;
-      }
+        return [...previousPlayers, playerData.playerId];
+      });
+    };
 
-      return [
-        ...previousPlayers,
-        playerData.playerId,
-      ];
-    });
-  };
+    socket.on("playerSubmitted", handlePlayerSubmitted);
 
-  socket.on("playerSubmitted", handlePlayerSubmitted);
+    return () => {
+      socket.off("playerSubmitted", handlePlayerSubmitted);
+    };
+  }, []);
 
-  return () => {
-    socket.off("playerSubmitted", handlePlayerSubmitted);
-  };
-}, []);
-    
-// =========================
-// ROUND END
-// =========================
+  useEffect(() => {
+    const handleRoundEnded = (roundData) => {
+      setSubmitted(true);
 
-useEffect(() => {
-  const handleRoundEnded = (roundData) => {
-    setSubmitted(true);
+      navigate("/round-result", {
+        state: {
+          ...gameData,
+          ...roundData,
+        },
+      });
+    };
 
-    navigate("/round-result", {
-      state: {
-        ...gameData,
-        ...roundData,
-      },
-    });
-  };
+    socket.on("roundEnded", handleRoundEnded);
 
-  socket.on("roundEnded", handleRoundEnded);
-
-  return () => {
-    socket.off("roundEnded", handleRoundEnded);
-  };
-}, [gameData, navigate]);
-  // =========================
-  // INPUT CHANGE
-  // =========================
+    return () => {
+      socket.off("roundEnded", handleRoundEnded);
+    };
+  }, [gameData, navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    setAnswers({
-      ...answers,
+    setAnswers((previousAnswers) => ({
+      ...previousAnswers,
       [name]: value,
-    });
+    }));
   };
 
-  // =========================
-  // SUBMIT
-  // =========================
-
   const handleSubmit = () => {
-  if (submitted || timeLeft <= 0) {
-    return;
-  }
+    if (submitted || timeLeft <= 0) {
+      return;
+    }
 
-  socket.emit("submitAnswers", {
-    roomCode: gameData.roomCode,
-    answers: answers,
-    submittedAt: Date.now(),
-  });
+    socket.emit("submitAnswers", {
+      roomCode: gameData.roomCode,
+      answers,
+      submittedAt: Date.now(),
+    });
 
-  setSubmitted(true);
-};
+    setSubmitted(true);
+  };
 
   if (!gameData) {
-    return <h2>Game data not found</h2>;
+    return (
+      <div className="room-container">
+        <div className="room-card">
+          <div className="room-icon">🎮</div>
+          <h1>Game data not found</h1>
+          <p className="room-subtitle">
+            This game session is no longer available.
+          </p>
+          <button className="main-room-btn" onClick={() => navigate("/")}>
+            BACK TO HOME
+          </button>
+        </div>
+      </div>
+    );
   }
+
+  const fields = [
+    { name: "name", label: "Name", placeholder: "Enter a name" },
+    { name: "place", label: "Place", placeholder: "Enter a place" },
+    { name: "thing", label: "Thing", placeholder: "Enter a thing" },
+    { name: "animal", label: "Animal", placeholder: "Enter an animal" },
+    { name: "food", label: "Food", placeholder: "Enter a food" },
+  ];
 
   return (
     <div className="game-container">
       <div className="game-card">
-
-        {/* GAME HEADER */}
-
         <div className="game-header">
           <div>
             <h1>Alphabet Rush</h1>
-
             <p>
-              Round {gameData.currentRound} /{" "}
-              {gameData.totalRounds}
+              Round {gameData.currentRound} / {gameData.totalRounds}
             </p>
           </div>
 
-         <div
-  className={
-    timeLeft <= 10
-      ? "timer timer-warning"
-      : "timer"
-  }
->
-  ⏱️ {timeLeft}
-
-  {timeLeft <= 10 && timeLeft > 0 && (
-    <small>Hurry! {timeLeft}s left</small>
-  )}
-</div>
-        </div>
-
-        {/* LETTER */}
-
-        <div className="letter-section">
-          <span>YOUR LETTER</span>
-
-          <div className="letter">
-            {gameData.letter}
+          <div className={timeLeft <= 10 ? "timer timer-warning" : "timer"}>
+            <span>⏱️ {timeLeft}s</span>
+            {timeLeft <= 10 && timeLeft > 0 && (
+              <small>Hurry!</small>
+            )}
           </div>
         </div>
 
-        <div className="submission-status">
-  <strong>Players Status</strong>
-
-  <p>
-    🟢 {submittedPlayers.length} player
-    {submittedPlayers.length !== 1 ? "s" : ""} submitted
-  </p>
-</div>
-
-        {/* ANSWERS */}
-
-        <div className="answers-section">
-
-          <label>Name</label>
-
-          <input
-            type="text"
-            name="name"
-            placeholder="Enter a name"
-            value={answers.name}
-            onChange={handleChange}
-            disabled={submitted}
-          />
-
-          <label>Place</label>
-
-          <input
-            type="text"
-            name="place"
-            placeholder="Enter a place"
-            value={answers.place}
-            onChange={handleChange}
-            disabled={submitted}
-          />
-
-          <label>Thing</label>
-
-          <input
-            type="text"
-            name="thing"
-            placeholder="Enter a thing"
-            value={answers.thing}
-            onChange={handleChange}
-            disabled={submitted}
-          />
-
-          <label>Animal</label>
-
-          <input
-            type="text"
-            name="animal"
-            placeholder="Enter an animal"
-            value={answers.animal}
-            onChange={handleChange}
-            disabled={submitted}
-          />
-
-          <label>Food</label>
-
-          <input
-            type="text"
-            name="food"
-            placeholder="Enter a food"
-            value={answers.food}
-            onChange={handleChange}
-            disabled={submitted}
-          />
-
+        <div className="letter-section">
+          <span>YOUR LETTER</span>
+          <div className="letter">{gameData.letter}</div>
         </div>
 
-        {/* SUBMIT */}
+        <div className="submission-status">
+          <strong>Players Status</strong>
+          <p>
+            <span className="status-dot" aria-hidden="true" />
+            {submittedPlayers.length} player
+            {submittedPlayers.length !== 1 ? "s" : ""} submitted
+          </p>
+        </div>
+
+        <div className="answers-section">
+          {fields.map((field) => (
+            <div className="answer-field" key={field.name}>
+              <label htmlFor={field.name}>{field.label}</label>
+              <input
+                id={field.name}
+                type="text"
+                name={field.name}
+                placeholder={field.placeholder}
+                value={answers[field.name]}
+                onChange={handleChange}
+                disabled={submitted}
+                autoComplete="off"
+              />
+            </div>
+          ))}
+        </div>
 
         <button
           className="submit-answers-btn"
@@ -249,7 +182,6 @@ useEffect(() => {
               : "ANSWERS SUBMITTED"
             : "SUBMIT ANSWERS"}
         </button>
-
       </div>
     </div>
   );
