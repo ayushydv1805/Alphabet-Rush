@@ -2,21 +2,22 @@ import { Link } from "react-router-dom";
 
 function Home() {
   return (
-    <div className="home-container">
-      <div className="game-card">
-
-        <div className="logo">
+    <main className="home-container">
+      <section className="game-card">
+        <div className="logo" aria-hidden="true">
           🔤
         </div>
+
+        <p className="home-eyebrow">REAL-TIME MULTIPLAYER</p>
 
         <h1>ALPHABET RUSH</h1>
 
         <p className="tagline">
-          Think Fast. Type Faster.
+          Think fast, find the right words, and beat your friends before the
+          clock runs out.
         </p>
 
-        <div className="buttons">
-
+        <div className="buttons" aria-label="Game actions">
           <Link to="/create-room" className="create-btn">
             CREATE ROOM
           </Link>
@@ -24,43 +25,39 @@ function Home() {
           <Link to="/join-room" className="join-btn">
             JOIN ROOM
           </Link>
-
         </div>
 
-        <div className="features">
-
+        <div className="features" aria-label="Game highlights">
           <div className="feature">
-            <span>👥</span>
+            <span aria-hidden="true">👥</span>
             <div>
-              <strong>10 Players</strong>
-              <small>Play with friends</small>
+              <strong>Up to 10 Players</strong>
+              <small>Invite friends to your room</small>
             </div>
           </div>
 
           <div className="feature">
-            <span>⏱️</span>
+            <span aria-hidden="true">⏱️</span>
             <div>
-              <strong>60 Seconds</strong>
-              <small>Think and type fast</small>
+              <strong>60-Second Rounds</strong>
+              <small>Fast decisions, faster typing</small>
             </div>
           </div>
 
           <div className="feature">
-            <span>🏆</span>
+            <span aria-hidden="true">🏆</span>
             <div>
-              <strong>Fastest Wins</strong>
-              <small>Be quick & correct</small>
+              <strong>Score to Win</strong>
+              <small>Correct answers earn the points</small>
             </div>
           </div>
-
         </div>
 
-        <p className="version">
-          Multiplayer Word Challenge
+        <p className="home-note">
+          Private rooms · Quick to join · Built for friendly competition
         </p>
-
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }
 
