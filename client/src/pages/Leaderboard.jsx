@@ -1,112 +1,72 @@
 import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import socket from "../socket";
+import socket from "../services/socket";
+import PlayerList from "../components/rooms/PlayerList";
 
 function Leaderboard() {
   const location = useLocation();
   const navigate = useNavigate();
-
   const gameData = location.state;
 
   useEffect(() => {
-    const handleGameStarted = (gameData) => {
-      navigate("/game", {
-        state: gameData,
-      });
-    };
+    const handleGameStarted = (nextGameData) => navigate("/game", { state: nextGameData });
 
     socket.on("gameStarted", handleGameStarted);
-
-    return () => {
-      socket.off("gameStarted", handleGameStarted);
-    };
+    return () => socket.off("gameStarted", handleGameStarted);
   }, [navigate]);
 
   if (!gameData) {
-    return <h2>Game data not found</h2>;
+    return (
+      <main className="room-container">
+        <section className="room-card">
+          <div className="room-icon">🏆</div>
+          <h1>Leaderboard unavailable</h1>
+          <p className="room-subtitle">The final results are no longer available.</p>
+          <button className="main-room-btn" type="button" onClick={() => navigate("/")}>
+            BACK TO HOME
+          </button>
+        </section>
+      </main>
+    );
   }
 
   const players = [...(gameData.players || [])].sort(
-    (a, b) => b.score - a.score
+    (first, second) => second.score - first.score
   );
 
   const winner = players[0];
 
   return (
-    <div className="room-container">
-      <div className="waiting-card">
-
+    <main className="room-container">
+      <section className="waiting-card">
         <div className="room-icon">🏆</div>
-
         <h1>Game Over!</h1>
-
-        <p className="room-subtitle">
-          Final Results
-        </p>
+        <p className="room-subtitle">Final Results</p>
 
         {winner && (
           <div className="waiting-message">
-            👑 Winner:{" "}
-            <strong>{winner.name}</strong>
+            👑 Winner: <strong>{winner.name}</strong>
           </div>
         )}
 
-        <div className="players-section">
-          <div className="section-title">
-            <h2>Final Leaderboard</h2>
-          </div>
-
-          <div className="player-list">
-            {players.map((player, index) => (
-              <div
-                className="player-card"
-                key={player.id}
-              >
-                <div className="player-avatar">
-                  {index + 1}
-                </div>
-
-                <div className="player-info">
-                  <strong>{player.name}</strong>
-
-                  <small>
-                    {player.score}{" "}
-                    {player.score === 1
-                      ? "Point"
-                      : "Points"}
-                  </small>
-                </div>
-
-                <div className="host-badge">
-                  ⭐ {player.score}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <button 
-  className="start-game-btn" 
-  onClick={() => { 
-    console.log("PLAY AGAIN CLICKED");
-
-    socket.emit("rematch", { 
-      roomCode: gameData.roomCode, 
-    }); 
-  }} 
-> 
-  🔄 PLAY AGAIN 
-</button>
+        <section className="players-section">
+          <div className="section-title"><h2>Final Leaderboard</h2></div>
+          <PlayerList players={players} showScores showRank />
+        </section>
 
         <button
-          className="leave-btn"
-          onClick={() => navigate("/")}
+          className="start-game-btn"
+          type="button"
+          onClick={() => socket.emit("rematch", { roomCode: gameData.roomCode })}
         >
-          🏠 BACK TO HOME
+          🔄 PLAY AGAIN
         </button>
 
-      </div>
-    </div>
+        <button className="leave-btn" type="button" onClick={() => navigate("/")}>
+          🏠 BACK TO HOME
+        </button>
+      </section>
+    </main>
   );
 }
 

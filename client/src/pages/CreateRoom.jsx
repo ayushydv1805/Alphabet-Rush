@@ -1,94 +1,71 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import socket from "../socket";
+import socket from "../services/socket";
+import { ROUND_OPTIONS } from "../constants/game";
 
 function CreateRoom() {
   const navigate = useNavigate();
-
   const [playerName, setPlayerName] = useState("");
   const [rounds, setRounds] = useState(10);
 
-  const handleCreateRoom = (e) => {
-    e.preventDefault();
+  const handleCreateRoom = (event) => {
+    event.preventDefault();
+    const name = playerName.trim();
 
-    if (!playerName.trim()) {
+    if (!name) {
       alert("Please enter your name");
       return;
     }
 
-    socket.emit("createRoom", {
-      playerName: playerName.trim(),
-      rounds: rounds,
+    socket.once("roomCreated", (roomData) => {
+      navigate("/waiting-room", { state: roomData });
     });
 
-    socket.once("roomCreated", (roomData) => {
-      navigate("/waiting-room", {
-        state: roomData,
-      });
-    });
+    socket.emit("createRoom", { playerName: name, rounds });
   };
 
   return (
-    <div className="room-container">
-      <div className="room-card">
-
-        <div className="room-icon">🎮</div>
-
+    <main className="room-container">
+      <section className="room-card">
+        <div className="room-icon" aria-hidden="true">🎮</div>
         <h1>Create Room</h1>
-
-        <p className="room-subtitle">
-          Create a room and invite your friends
-        </p>
+        <p className="room-subtitle">Create a room and invite your friends.</p>
 
         <form onSubmit={handleCreateRoom}>
-
-          <label>YOUR NAME</label>
-
+          <label htmlFor="player-name">YOUR NAME</label>
           <input
+            id="player-name"
             type="text"
             placeholder="Enter your name"
             value={playerName}
-            onChange={(e) => setPlayerName(e.target.value)}
+            onChange={(event) => setPlayerName(event.target.value)}
             maxLength={20}
+            autoComplete="nickname"
           />
 
           <label>NUMBER OF ROUNDS</label>
-
           <div className="round-options">
-            {[5, 10, 15, 20].map((number) => (
+            {ROUND_OPTIONS.map((number) => (
               <button
                 type="button"
                 key={number}
-                className={
-                  rounds === number
-                    ? "round selected"
-                    : "round"
-                }
+                className={rounds === number ? "round selected" : "round"}
                 onClick={() => setRounds(number)}
+                aria-pressed={rounds === number}
               >
                 {number}
               </button>
             ))}
           </div>
 
-          <button
-            className="main-room-btn"
-            type="submit"
-          >
-            CREATE ROOM
-          </button>
-
+          <button className="main-room-btn" type="submit">CREATE ROOM</button>
         </form>
 
-        <button
-          className="back-btn"
-          onClick={() => navigate("/")}
-        >
+        <button className="back-btn" type="button" onClick={() => navigate("/")}>
           ← Back
         </button>
-
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }
 

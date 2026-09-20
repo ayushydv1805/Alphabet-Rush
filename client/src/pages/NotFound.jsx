@@ -3,9 +3,6 @@ import { Link } from "react-router-dom";
 function NotFound() {
   return (
     <main className="not-found-page">
-      <div className="not-found-orb orb-one" />
-      <div className="not-found-orb orb-two" />
-
       <div className="not-found-card">
         <div className="not-found-badge">
           <span>🔤</span>
@@ -21,7 +18,6 @@ function NotFound() {
         </div>
 
         <p className="not-found-eyebrow">WRONG TURN</p>
-
         <h1>Page not found</h1>
 
         <p className="not-found-copy">
@@ -35,8 +31,7 @@ function NotFound() {
         </Link>
 
         <p className="not-found-hint">
-          Error code <strong>404</strong> · The requested page could not be
-          found.
+          Error code <strong>404</strong> · The requested page could not be found.
         </p>
       </div>
     </main>

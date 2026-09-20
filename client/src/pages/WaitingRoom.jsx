@@ -1,154 +1,73 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import socket from "../socket";
+import { useLocation, useNavigate } from "react-router-dom";
+import socket from "../services/socket";
+import PlayerList from "../components/rooms/PlayerList";
+import RoomCode from "../components/rooms/RoomCode";
+import { MAX_PLAYERS } from "../constants/game";
+
 function WaitingRoom() {
-
   const navigate = useNavigate();
-
   const location = useLocation();
-
   const roomData = location.state;
-
-  const [players, setPlayers] = useState(
-    roomData?.players || []
-  );
+  const [players, setPlayers] = useState(roomData?.players || []);
 
   useEffect(() => {
-  if (!roomData) {
-    navigate("/");
-    return;
-  }
+    if (!roomData) {
+      navigate("/");
+      return undefined;
+    }
 
-  const handleRoomUpdate = (updatedRoom) => {
-    setPlayers(updatedRoom.players);
-  };
+    const handleRoomUpdate = (updatedRoom) => setPlayers(updatedRoom.players || []);
+    const handleGameStarted = (gameData) => navigate("/game", { state: gameData });
 
-  const handleGameStarted = (gameData) => {
-    navigate("/game", {
-      state: gameData,
-    });
-  };
+    socket.on("roomUpdated", handleRoomUpdate);
+    socket.on("gameStarted", handleGameStarted);
 
-  socket.on("roomUpdated", handleRoomUpdate);
-  socket.on("gameStarted", handleGameStarted);
+    return () => {
+      socket.off("roomUpdated", handleRoomUpdate);
+      socket.off("gameStarted", handleGameStarted);
+    };
+  }, [roomData, navigate]);
 
-  return () => {
-    socket.off("roomUpdated", handleRoomUpdate);
-    socket.off("gameStarted", handleGameStarted);
-  };
-}, [roomData, navigate]);
+  if (!roomData) return null;
 
-  if (!roomData) {
-    return null;
-  }
-
-  const roomCode = roomData.roomCode;
-
-  const rounds = roomData.rounds;
   return (
-    <div className="room-container">
-      <div className="waiting-card">
-
+    <main className="room-container">
+      <section className="waiting-card">
         <div className="waiting-header">
-          <div className="room-icon">🎮</div>
-
+          <div className="room-icon" aria-hidden="true">🎮</div>
           <div>
             <h1>Waiting Room</h1>
             <p>Get your friends ready!</p>
           </div>
         </div>
 
-        <div className="code-section">
+        <RoomCode roomCode={roomData.roomCode} />
 
-          <span>ROOM CODE</span>
-
-          <div className="code-box">
-            <strong>{roomCode}</strong>
-
-            <button
-              className="copy-btn"
-              onClick={() =>
-                navigator.clipboard.writeText(roomCode)
-              }
-            >
-              📋
-            </button>
-          </div>
-
-          <small>
-            Share this code with your friends
-          </small>
-
-        </div>
-
-        <div className="players-section">
-
+        <section className="players-section">
           <div className="section-title">
             <h2>Players</h2>
-            <span>{players.length} / 10</span>
+            <span>{players.length} / {MAX_PLAYERS}</span>
           </div>
+          <PlayerList players={players} showHost />
+        </section>
 
-          <div className="player-list">
-
-            {players.map((player, index) => (
-              <div
-                className="player-card"
-                key={player.id}
-              >
-
-                <div className="player-avatar">
-                  {player.name.charAt(0).toUpperCase()}
-                </div>
-
-                <div className="player-info">
-                  <strong>{player.name}</strong>
-
-                  <small>
-                    {index === 0 ? "Host" : "Player"}
-                  </small>
-                </div>
-
-                {index === 0 && (
-                  <div className="host-badge">
-                    👑 HOST
-                  </div>
-                )}
-
-              </div>
-            ))}
-
-          </div>
-
-        </div>
-
-        <div className="waiting-message">
-          ⏳ Waiting for other players to join...
-        </div>
-
-        <div className="round-info">
-          🎯 {rounds} Rounds
-        </div>
+        <div className="waiting-message">⏳ Waiting for other players to join...</div>
+        <div className="round-info">🎯 {roomData.rounds} Rounds</div>
 
         <button
-  className="start-game-btn"
-  onClick={() => {
-    socket.emit("startGame", {
-      roomCode: roomCode,
-    });
-  }}
->
-  START GAME
-</button>
-
-        <button
-          className="leave-btn"
-          onClick={() => navigate("/")}
+          className="start-game-btn"
+          type="button"
+          onClick={() => socket.emit("startGame", { roomCode: roomData.roomCode })}
         >
-          ← Leave Room
+          START GAME
         </button>
 
-      </div>
-    </div>
+        <button className="leave-btn" type="button" onClick={() => navigate("/")}>
+          ← Leave Room
+        </button>
+      </section>
+    </main>
   );
 }
 

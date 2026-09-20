@@ -1,25 +1,16 @@
 import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import socket from "../socket";
+import socket from "../services/socket";
+import PlayerList from "../components/rooms/PlayerList";
 
 function RoundResult() {
   const location = useLocation();
   const navigate = useNavigate();
-
   const resultData = location.state;
 
   useEffect(() => {
-    const handleGameStarted = (gameData) => {
-      navigate("/game", {
-        state: gameData,
-      });
-    };
-
-    const handleGameOver = (gameData) => {
-      navigate("/leaderboard", {
-        state: gameData,
-      });
-    };
+    const handleGameStarted = (gameData) => navigate("/game", { state: gameData });
+    const handleGameOver = (gameData) => navigate("/leaderboard", { state: gameData });
 
     socket.on("gameStarted", handleGameStarted);
     socket.on("gameOver", handleGameOver);
@@ -31,105 +22,57 @@ function RoundResult() {
   }, [navigate]);
 
   if (!resultData) {
-    return <h2>Result data not found</h2>;
+    return (
+      <main className="room-container">
+        <section className="room-card">
+          <div className="room-icon">🏆</div>
+          <h1>Result unavailable</h1>
+          <p className="room-subtitle">This round result is no longer available.</p>
+          <button className="main-room-btn" type="button" onClick={() => navigate("/")}>
+            BACK TO HOME
+          </button>
+        </section>
+      </main>
+    );
   }
 
   const isLastRound =
+    resultData.totalRounds != null &&
     resultData.currentRound >= resultData.totalRounds;
 
   return (
-    <div className="room-container">
-      <div className="waiting-card">
-
+    <main className="room-container">
+      <section className="waiting-card">
         <div className="room-icon">🏆</div>
-
-        <h1>
-          Round {resultData.currentRound} Result
-        </h1>
-
-        <p className="room-subtitle">
-          The round has ended!
-        </p>
+        <h1>Round {resultData.currentRound} Result</h1>
+        <p className="room-subtitle">The round has ended.</p>
 
         <div className="waiting-message">
-          🏆 Winner:{" "}
-          <strong>
-            {resultData.winnerName || "No Winner"}
-          </strong>
+          🏆 Winner: <strong>{resultData.winnerName || "No winner"}</strong>
         </div>
 
-{resultData.winnerId === null && (
-  <div className="waiting-message">
-    ❌ No winner this round
-  </div>
-)}
+        {resultData.winnerId === null && (
+          <div className="waiting-message">❌ No winner this round</div>
+        )}
+
         <div className="waiting-message">
-          🎯 Letter:{" "}
-          <strong>{resultData.letter}</strong>
+          🎯 Letter: <strong>{resultData.letter}</strong>
         </div>
 
-        <div className="players-section">
-          <div className="section-title">
-            <h2>Scores</h2>
-          </div>
+        <section className="players-section">
+          <div className="section-title"><h2>Scores</h2></div>
+          <PlayerList players={resultData.players} showScores showRank />
+        </section>
 
-          <div className="player-list">
-            {resultData.players?.map((player, index) => (
-              <div
-                className="player-card"
-                key={player.id}
-              >
-                <div className="player-avatar">
-                  {index + 1}
-                </div>
-
-                <div className="player-info">
-                  <strong>{player.name}</strong>
-
-                  <small>
-                    {player.score}{" "}
-                    {player.score === 1
-                      ? "Point"
-                      : "Points"}
-                  </small>
-                </div>
-
-                <div className="host-badge">
-                  ⭐ {player.score}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {!isLastRound && (
-          <button
-            className="start-game-btn"
-            onClick={() => {
-              socket.emit("nextRound", {
-                roomCode: resultData.roomCode,
-              });
-            }}
-          >
-            NEXT ROUND
-          </button>
-        )}
-
-        {isLastRound && (
-          <button
-            className="start-game-btn"
-            onClick={() => {
-              socket.emit("nextRound", {
-                roomCode: resultData.roomCode,
-              });
-            }}
-          >
-            🏆 FINISH GAME
-          </button>
-        )}
-
-      </div>
-    </div>
+        <button
+          className="start-game-btn"
+          type="button"
+          onClick={() => socket.emit("nextRound", { roomCode: resultData.roomCode })}
+        >
+          {isLastRound ? "🏆 FINISH GAME" : "NEXT ROUND"}
+        </button>
+      </section>
+    </main>
   );
 }
 
