@@ -3042,3 +3042,40 @@ html[data-theme="light"] .game-container .game-card {
     scroll-behavior: auto !important;
   }
 }
+
+
+/* -------------------- Home copy hierarchy -------------------- */
+
+.home-eyebrow {
+  width: fit-content;
+  margin: 0 auto 12px;
+  padding: 6px 10px;
+
+  border: 1px solid rgba(129, 140, 248, 0.18);
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.07);
+
+  color: var(--ar-accent);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 2px;
+}
+
+.home-note {
+  margin: 24px 0 0;
+  color: var(--ar-subtle);
+  font-size: 11px;
+  letter-spacing: 0.25px;
+}
+
+@media (max-width: 700px) {
+  .home-eyebrow {
+    font-size: 9px;
+    letter-spacing: 1.6px;
+  }
+
+  .home-note {
+    font-size: 10px;
+    line-height: 1.6;
+  }
+}
