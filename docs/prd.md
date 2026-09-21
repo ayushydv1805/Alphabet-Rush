@@ -68,7 +68,10 @@ Five category checks run concurrently.
 
 - One point per valid answer.
 - Score is cumulative within a room.
-- Round results expose player scores.
+- Each submitted player's round score is added to their cumulative score before the round result is broadcast.
+- Round winner is determined by the highest number of valid answers in that round; ties are shown as co-winners.
+- Round results expose both round points and cumulative scores.
+- Each player can review which of their answers were right or wrong.
 - Final leaderboard sorts players by score.
 
 ## 6. Inputs
