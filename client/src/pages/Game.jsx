@@ -148,7 +148,7 @@ function Game() {
               {...field}
               value={answers[field.name]}
               onChange={handleChange}
-              disabled={submitted}
+              disabled={submitted || timeLeft <= 0}
             />
           ))}
         </section>
