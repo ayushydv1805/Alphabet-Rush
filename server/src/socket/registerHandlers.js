@@ -200,7 +200,15 @@ function registerSocketHandlers({ io, validateAnswer, startRound, endRound }) {
       const currentPlayer = currentRoom.players.find(
         (item) => item.id === socket.id
       );
+
       if (!currentPlayer) {
+        if (
+          currentRoom.roundExpired &&
+          currentRoom.pendingValidations === 0 &&
+          !currentRoom.roundEnded
+        ) {
+          endRound(roomCode, "time-up");
+        }
         return;
       }
 
