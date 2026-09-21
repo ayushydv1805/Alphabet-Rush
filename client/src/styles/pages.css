@@ -531,3 +531,38 @@
     font-size: 15px;
   }
 }
+
+/* -------------------- Final leaderboard -------------------- */
+
+.leaderboard-card {
+  max-width: 860px;
+}
+
+.leaderboard-card .players-section {
+  margin-top: 26px;
+}
+
+.overall-winner-banner {
+  margin-top: 6px;
+  padding: 20px 22px;
+}
+
+.overall-winner-banner strong {
+  font-size: 20px;
+}
+
+.leaderboard-card .player-list .player-card:first-child {
+  border-color: rgba(129, 140, 248, 0.34);
+  background:
+    linear-gradient(135deg, rgba(99, 102, 241, 0.09), var(--ar-input));
+}
+
+@media (max-width: 640px) {
+  .overall-winner-banner strong {
+    font-size: 17px;
+  }
+
+  .leaderboard-card .player-list {
+    grid-template-columns: 1fr;
+  }
+}
