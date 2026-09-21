@@ -200,7 +200,7 @@ function registerSocketHandlers({ io, validateAnswer, startRound, endRound }) {
       const currentPlayer = currentRoom.players.find(
         (item) => item.id === socket.id
       );
-      if (!currentPlayer || currentRoom.currentRound !== 0 && !currentPlayer) {
+      if (!currentPlayer) {
         return;
       }
 
