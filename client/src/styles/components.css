@@ -474,3 +474,83 @@
     transition: none;
   }
 }
+
+/* -------------------- Round score / winner cards -------------------- */
+
+.score-stack {
+  min-width: 62px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.score-stack .round-score {
+  color: var(--ar-success);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.score-stack > strong {
+  color: var(--ar-heading);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.winner-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 3px;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.13);
+  color: #a5b4fc;
+  font-size: 7px;
+  font-weight: 950;
+  letter-spacing: 0.8px;
+}
+
+.round-winner-card {
+  border-color: rgba(99, 102, 241, 0.42);
+  background:
+    linear-gradient(135deg, rgba(99, 102, 241, 0.12), var(--ar-input));
+  box-shadow:
+    0 10px 25px rgba(99, 102, 241, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+html[data-theme="light"] .round-winner-card {
+  background:
+    linear-gradient(135deg, rgba(99, 102, 241, 0.08), var(--ar-input));
+}
+
+.game-kicker {
+  margin: 0 0 5px;
+  color: var(--ar-accent);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 2px;
+}
+
+.letter-hint {
+  margin: 11px 0 0;
+  color: var(--ar-muted);
+  font-size: 11px;
+}
+
+.game-waiting-state {
+  border: 1px solid var(--ar-border);
+  border-radius: 14px;
+  background: rgba(99, 102, 241, 0.05);
+}
+
+@media (max-width: 480px) {
+  .score-stack {
+    min-width: 54px;
+  }
+
+  .score-stack .round-score {
+    font-size: 11px;
+  }
+}
