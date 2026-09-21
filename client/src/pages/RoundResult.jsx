@@ -28,8 +28,14 @@ function RoundResult() {
         <section className="room-card">
           <div className="room-icon">🏆</div>
           <h1>Result unavailable</h1>
-          <p className="room-subtitle">This round result is no longer available.</p>
-          <button className="main-room-btn" type="button" onClick={() => navigate("/")}>
+          <p className="room-subtitle">
+            This round result is no longer available.
+          </p>
+          <button
+            className="main-room-btn"
+            type="button"
+            onClick={() => navigate("/")}
+          >
             BACK TO HOME
           </button>
         </section>
@@ -40,12 +46,14 @@ function RoundResult() {
   const players = resultData.players || [];
   const me = players.find((player) => player.id === socket.id);
   const isHost = resultData.hostId === socket.id;
+  const winnerIds = resultData.winnerIds || [];
   const winnerNames = resultData.winnerNames || [];
 
-  const handleNextRound = () => {
-    if (!isHost) return;
-    socket.emit("nextRound", { roomCode: resultData.roomCode });
-  };
+  const rankedPlayers = [...players].sort(
+    (first, second) =>
+      (second.roundPoints || 0) - (first.roundPoints || 0) ||
+      second.score - first.score
+  );
 
   const isLastRound =
     resultData.totalRounds != null &&
@@ -67,9 +75,11 @@ function RoundResult() {
         </div>
 
         <div className="round-winner-banner">
-          <span className="round-winner-icon">👑</span>
+          <span className="round-winner-icon" aria-hidden="true">👑</span>
           <div>
-            <small>ROUND WINNER{winnerNames.length > 1 ? "S" : ""}</small>
+            <small>
+              ROUND WINNER{winnerNames.length > 1 ? "S" : ""}
+            </small>
             <strong>
               {winnerNames.length
                 ? winnerNames.join(" · ")
@@ -87,7 +97,9 @@ function RoundResult() {
           <section className="answer-review">
             <div className="section-title">
               <h2>Your answers</h2>
-              <span>{me.roundPoints} / {ANSWER_FIELDS.length} correct</span>
+              <span>
+                {me.roundPoints} / {ANSWER_FIELDS.length} correct
+              </span>
             </div>
 
             <div className="answer-review-grid">
@@ -97,7 +109,11 @@ function RoundResult() {
 
                 return (
                   <article
-                    className={isCorrect ? "review-card correct" : "review-card incorrect"}
+                    className={
+                      isCorrect
+                        ? "review-card correct"
+                        : "review-card incorrect"
+                    }
                     key={field.name}
                   >
                     <div className="review-card-top">
@@ -113,7 +129,7 @@ function RoundResult() {
                       {isCorrect
                         ? "Valid category answer for the round letter."
                         : value
-                          ? "Does not pass the category or starting-letter check."
+                          ? "This answer did not pass the category or starting-letter check."
                           : "Blank answers do not receive a point."}
                     </small>
                   </article>
@@ -125,21 +141,34 @@ function RoundResult() {
 
         <section className="round-score-section">
           <div className="section-title">
-            <h2>Scoreboard</h2>
-            <span>Points this round · Total score</span>
+            <h2>Round scoreboard</h2>
+            <span>Round points · Overall total</span>
           </div>
 
-          <PlayerList players={players} showScores showRoundPoints showRank />
+          <PlayerList
+            players={rankedPlayers}
+            showScores
+            showRoundPoints
+            showRank
+            winnerIds={winnerIds}
+          />
         </section>
 
         <div className="result-next-action">
           {isHost ? (
-            <button className="start-game-btn" type="button" onClick={handleNextRound}>
+            <button
+              className="start-game-btn"
+              type="button"
+              onClick={() =>
+                socket.emit("nextRound", { roomCode: resultData.roomCode })
+              }
+            >
               {isLastRound ? "🏆 FINISH GAME" : "NEXT ROUND →"}
             </button>
           ) : (
             <div className="waiting-message">
-              ⏳ Waiting for the host to {isLastRound ? "finish the game" : "start the next round"}...
+              ⏳ Waiting for the host to{" "}
+              {isLastRound ? "finish the game" : "start the next round"}...
             </div>
           )}
         </div>
