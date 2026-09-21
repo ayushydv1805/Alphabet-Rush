@@ -64,6 +64,8 @@ function registerSocketHandlers({ io, validateAnswer, startRound, endRound }) {
         winnerIds: [],
         winnerNames: [],
         roundEnded: true,
+        roundExpired: false,
+        pendingValidations: 0,
         roundTimer: null,
         players: [
           {
@@ -91,7 +93,8 @@ function registerSocketHandlers({ io, validateAnswer, startRound, endRound }) {
     });
 
     socket.on("joinRoom", ({ roomCode, playerName }) => {
-      const code = typeof roomCode === "string" ? roomCode.trim().toUpperCase() : "";
+      const code =
+        typeof roomCode === "string" ? roomCode.trim().toUpperCase() : "";
       const name = normalizeName(playerName);
       const room = getRoom(code);
 
@@ -156,7 +159,7 @@ function registerSocketHandlers({ io, validateAnswer, startRound, endRound }) {
 
     socket.on("submitAnswers", async ({ roomCode, answers, submittedAt }) => {
       const room = getRoom(roomCode);
-      if (!room || room.roundEnded) return;
+      if (!room || room.roundEnded || room.roundExpired) return;
 
       const player = room.players.find((item) => item.id === socket.id);
       if (!player || player.submitted) return;
@@ -167,45 +170,72 @@ function registerSocketHandlers({ io, validateAnswer, startRound, endRound }) {
       player.submitted = true;
       player.answers = safeAnswers;
       player.submittedAt = submittedAt || Date.now();
+      room.pendingValidations += 1;
 
-      const [nameValid, placeValid, thingValid, animalValid, foodValid] =
-        await Promise.all([
-          validateAnswer(safeAnswers.name, "Name", letter),
-          validateAnswer(safeAnswers.place, "Place", letter),
-          validateAnswer(safeAnswers.thing, "Thing", letter),
-          validateAnswer(safeAnswers.animal, "Animal", letter),
-          validateAnswer(safeAnswers.food, "Food", letter),
-        ]);
+      let validation;
+      try {
+        const [nameValid, placeValid, thingValid, animalValid, foodValid] =
+          await Promise.all([
+            validateAnswer(safeAnswers.name, "Name", letter),
+            validateAnswer(safeAnswers.place, "Place", letter),
+            validateAnswer(safeAnswers.thing, "Thing", letter),
+            validateAnswer(safeAnswers.animal, "Animal", letter),
+            validateAnswer(safeAnswers.food, "Food", letter),
+          ]);
 
-      if (room.roundEnded) return;
+        validation = {
+          name: nameValid,
+          place: placeValid,
+          thing: thingValid,
+          animal: animalValid,
+          food: foodValid,
+        };
+      } finally {
+        room.pendingValidations = Math.max(0, room.pendingValidations - 1);
+      }
 
-      player.validation = {
-        name: nameValid,
-        place: placeValid,
-        thing: thingValid,
-        animal: animalValid,
-        food: foodValid,
-      };
+      const currentRoom = getRoom(roomCode);
+      if (!currentRoom) return;
 
-      const values = Object.values(player.validation);
-      player.roundPoints = values.filter(Boolean).length;
-      player.allCorrect = player.roundPoints === values.length;
-      player.score += player.roundPoints;
+      const currentPlayer = currentRoom.players.find(
+        (item) => item.id === socket.id
+      );
+      if (!currentPlayer || currentRoom.currentRound !== 0 && !currentPlayer) {
+        return;
+      }
+
+      currentPlayer.validation = validation;
+
+      const values = Object.values(validation);
+      currentPlayer.roundPoints = values.filter(Boolean).length;
+      currentPlayer.allCorrect = currentPlayer.roundPoints === values.length;
+      currentPlayer.score += currentPlayer.roundPoints;
 
       io.to(roomCode).emit("playerSubmitted", {
-        playerId: player.id,
-        playerName: player.name,
-        roundPoints: player.roundPoints,
-        submittedCount: room.players.filter((item) => item.submitted).length,
-        totalPlayers: room.players.length,
+        playerId: currentPlayer.id,
+        playerName: currentPlayer.name,
+        roundPoints: currentPlayer.roundPoints,
+        submittedCount: currentRoom.players.filter((item) => item.submitted).length,
+        totalPlayers: currentRoom.players.length,
       });
 
       const everyoneSubmitted =
-        room.players.length > 0 &&
-        room.players.every((item) => item.submitted);
+        currentRoom.players.length > 0 &&
+        currentRoom.players.every((item) => item.submitted);
 
-      if (everyoneSubmitted) {
+      if (
+        !currentRoom.roundEnded &&
+        !currentRoom.roundExpired &&
+        everyoneSubmitted &&
+        currentRoom.pendingValidations === 0
+      ) {
         endRound(roomCode, "all-submitted");
+      } else if (
+        !currentRoom.roundEnded &&
+        currentRoom.roundExpired &&
+        currentRoom.pendingValidations === 0
+      ) {
+        endRound(roomCode, "time-up");
       }
     });
 
@@ -247,6 +277,8 @@ function registerSocketHandlers({ io, validateAnswer, startRound, endRound }) {
       room.winnerIds = [];
       room.winnerNames = [];
       room.roundEnded = true;
+      room.roundExpired = false;
+      room.pendingValidations = 0;
 
       room.players.forEach((player) => resetPlayerRound(player, true));
       startRound(roomCode, 1);
@@ -280,9 +312,10 @@ function registerSocketHandlers({ io, validateAnswer, startRound, endRound }) {
         const everyoneSubmitted =
           room.currentRound > 0 &&
           !room.roundEnded &&
+          !room.roundExpired &&
           room.players.every((player) => player.submitted);
 
-        if (everyoneSubmitted) {
+        if (everyoneSubmitted && room.pendingValidations === 0) {
           endRound(roomCode, "all-submitted");
         }
       }
