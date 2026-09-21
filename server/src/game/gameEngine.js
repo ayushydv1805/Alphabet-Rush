@@ -11,11 +11,7 @@ function createGameEngine({ io }) {
     );
 
     if (maxRoundPoints === 0) {
-      return {
-        winnerIds: [],
-        winnerNames: [],
-        maxRoundPoints: 0,
-      };
+      return { winnerIds: [], winnerNames: [], maxRoundPoints: 0 };
     }
 
     const winners = room.players.filter(
@@ -49,6 +45,7 @@ function createGameEngine({ io }) {
 
     room.winnerIds = roundWinners.winnerIds;
     room.winnerNames = roundWinners.winnerNames;
+    room.winnerId = room.winnerIds[0] || null;
 
     io.to(roomCode).emit("roundEnded", {
       roomCode,
@@ -59,7 +56,7 @@ function createGameEngine({ io }) {
       endReason,
       winnerIds: room.winnerIds,
       winnerNames: room.winnerNames,
-      winnerId: room.winnerIds[0] || null,
+      winnerId: room.winnerId,
       winnerName: room.winnerNames[0] || "No scored winner",
       winningRoundPoints: roundWinners.maxRoundPoints,
       players: room.players.map(toRoundPlayer),
@@ -90,6 +87,18 @@ function createGameEngine({ io }) {
     );
   }
 
+  function markRoundExpired(roomCode) {
+    const room = getRoom(roomCode);
+    if (!room || room.roundEnded) return;
+
+    room.roundExpired = true;
+    room.roundTimer = null;
+
+    if (room.pendingValidations === 0) {
+      endRound(roomCode, "time-up");
+    }
+  }
+
   function startRound(roomCode, roundNumber) {
     const room = getRoom(roomCode);
     if (!room) return;
@@ -105,6 +114,8 @@ function createGameEngine({ io }) {
     room.winnerIds = [];
     room.winnerNames = [];
     room.roundEnded = false;
+    room.roundExpired = false;
+    room.pendingValidations = 0;
 
     room.players.forEach((player) => {
       player.answers = {};
@@ -127,12 +138,17 @@ function createGameEngine({ io }) {
 
     room.roundTimer = setTimeout(() => {
       if (getRoom(roomCode)) {
-        endRound(roomCode, "time-up");
+        markRoundExpired(roomCode);
       }
     }, ROUND_TIME_LIMIT);
   }
 
-  return { startRound, endRound, sendRoundResult };
+  return {
+    startRound,
+    endRound,
+    markRoundExpired,
+    sendRoundResult,
+  };
 }
 
 module.exports = { createGameEngine, ROUND_TIME_LIMIT };
