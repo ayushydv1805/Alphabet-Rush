@@ -84,7 +84,7 @@ Each answer is checked for:
 - Category relevance.
 - Required starting letter.
 
-The server first checks the starting letter deterministically, then uses a trusted built-in answer dictionary for common words and AI validation for answers outside that dictionary. This keeps common valid answers reliable while still supporting less-common answers.
+The server first checks the starting letter deterministically, then accepts common unambiguous answers from a trusted built-in dictionary. Answers outside that dictionary go through OpenAI Structured Outputs, with a second permissive review only when the first AI pass rejects an answer. This is designed to reduce false negatives while keeping common answers fast.
 
 ### 🏆 Scoring
 
@@ -471,7 +471,7 @@ The current implementation is intentionally prototype-oriented:
 - There is no database persistence.
 - There is no user authentication system.
 - Answer validation depends on the OpenAI service.
-- AI validation failures currently resolve as invalid answers.
+- If the AI service is unavailable, only answers covered by the trusted deterministic dictionary can be accepted; unknown answers are not awarded automatically.
 - The validator caches successful category results only for the lifetime of the server process.
 - The design is not currently configured for multiple Socket.IO server instances.
 - There is no complete automated test suite.
