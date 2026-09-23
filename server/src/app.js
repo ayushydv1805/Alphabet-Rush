@@ -29,6 +29,7 @@ function createApp() {
     res.json({
       ok: true,
       validator: openai ? "ai" : "fallback",
+      model: openai ? process.env.OPENAI_MODEL || "gpt-5.6-luna" : null,
     });
   });
 
