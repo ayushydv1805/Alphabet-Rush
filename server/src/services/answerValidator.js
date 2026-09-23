@@ -4,32 +4,34 @@ const FALLBACK_ANSWERS = {
   name: new Set([
     "aarav", "aakash", "abhay", "aditya", "aman", "amit", "ananya", "anjali",
     "arjun", "aryan", "ayush", "deepak", "diya", "harsh", "isha", "karan",
-    "kunal", "meera", "neha", "rahul", "raj", "rohit", "riya", "sahil",
-    "simran", "varun", "yash", "zoya"
+    "kunal", "meera", "neha", "rahul", "raj", "rohan", "rohit", "riya", "sahil",
+    "simran", "varun", "yash", "yuvan", "zoya"
   ]),
   place: new Set([
-    "agra", "ahmedabad", "amritsar", "agra", "bangalore", "bathinda",
-    "chandigarh", "chennai", "delhi", "faridabad", "goa", "gurgaon",
-    "hyderabad", "jaipur", "jalandhar", "kashmir", "kolkata", "lucknow",
-    "ludhiana", "manali", "mumbai", "mysore", "nagpur", "new delhi",
-    "patiala", "pune", "shimla", "surat", "yamunanagar"
+    "agra", "ahmedabad", "amritsar", "bangalore", "bathinda", "chandigarh",
+    "chennai", "delhi", "faridabad", "goa", "gurgaon", "haridwar", "hisar",
+    "hyderabad", "jaipur", "jalandhar", "kashmir", "kochi", "kolkata", "kurukshetra",
+    "lucknow", "ludhiana", "manali", "mathura", "meerut", "mumbai", "mysore",
+    "nagpur", "new delhi", "patiala", "pune", "shimla", "surat", "udaipur",
+    "varanasi", "yamunanagar"
   ]),
   thing: new Set([
-    "apple", "bag", "ball", "bottle", "book", "box", "chair", "clock",
-    "computer", "cup", "door", "fan", "guitar", "hammer", "key", "laptop",
-    "mobile", "pen", "phone", "pillow", "table", "television", "watch",
-    "yacht"
+    "apple", "bag", "ball", "belt", "bicycle", "bottle", "book", "box", "brush",
+    "chair", "clock", "computer", "cup", "desk", "door", "fan", "fork", "guitar",
+    "hair", "hammer", "helmet", "key", "keyboard", "laptop", "lock", "mobile",
+    "mouse", "notebook", "pen", "phone", "pillow", "plate", "remote", "ring",
+    "shoe", "spoon", "table", "television", "umbrella", "watch", "yacht", "yo-yo"
   ]),
   animal: new Set([
-    "ant", "ape", "bear", "cat", "cow", "deer", "dog", "donkey", "eagle",
-    "elephant", "fox", "goat", "horse", "lion", "monkey", "mouse", "panda",
-    "rabbit", "rat", "sheep", "tiger", "yak", "zebra"
+    "ant", "ape", "bear", "camel", "cat", "cow", "deer", "dog", "donkey", "eagle",
+    "elephant", "fox", "goat", "hen", "horse", "hyena", "lion", "monkey", "mouse",
+    "ox", "panda", "rabbit", "rat", "sheep", "tiger", "yak", "zebra"
   ]),
   food: new Set([
-    "aam", "aaloo", "aloo", "apple", "banana", "burger", "cake", "carrot",
-    "chicken", "chocolate", "dal", "dosa", "egg", "ice cream", "idli",
-    "mango", "noodles", "orange", "paneer", "pizza", "rice", "roti",
-    "samosa", "sandwich", "tea"
+    "aam", "aaloo", "aloo", "apple", "banana", "bread", "burger", "cake", "carrot",
+    "cheese", "chicken", "chocolate", "dal", "dosa", "egg", "halwa", "honey",
+    "ice cream", "idli", "jalebi", "kheer", "mango", "noodles", "orange", "paneer",
+    "pasta", "pizza", "poha", "rice", "roti", "samosa", "sandwich", "tea", "upma"
   ])
 };
 
@@ -139,6 +141,12 @@ function createAnswerValidator(openai) {
         continue;
       }
 
+      const trustedLocalMatch = fallbackValidate(category, answer);
+      if (trustedLocalMatch) {
+        result[category] = true;
+        continue;
+      }
+
       const key =
         category +
         "|" +
@@ -215,12 +223,7 @@ function createAnswerValidator(openai) {
             );
           }
 
-          const modelValueNormalized = normalizeModelResult(modelValue);
-          const trustedLocalMatch = fallbackValidate(
-            item.category,
-            item.answer
-          );
-          const value = modelValueNormalized || trustedLocalMatch;
+          const value = normalizeModelResult(modelValue);
 
           result[item.category] = value;
 

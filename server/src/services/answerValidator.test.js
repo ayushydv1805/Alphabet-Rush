@@ -127,3 +127,37 @@ test("reuses cached positive validations", async () => {
   assert.equal(second.place, true);
   assert.equal(openai.callCount, 1);
 });
+
+
+test("accepts the common H round answers without relying on AI", async () => {
+  const openai = createMockOpenAI(
+    JSON.stringify({
+      name: false,
+      place: false,
+      thing: false,
+      animal: false,
+      food: false,
+    })
+  );
+
+  const validator = createAnswerValidator(openai);
+  const result = await validator.validateAnswers(
+    {
+      name: "Harsh",
+      place: "Haridwar",
+      thing: "Hair",
+      animal: "Hen",
+      food: "Honey",
+    },
+    "H"
+  );
+
+  assert.deepEqual(result, {
+    name: true,
+    place: true,
+    thing: true,
+    animal: true,
+    food: true,
+  });
+  assert.equal(openai.callCount, 0);
+});

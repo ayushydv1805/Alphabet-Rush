@@ -84,7 +84,7 @@ Each answer is checked for:
 - Category relevance.
 - Required starting letter.
 
-The five category checks run concurrently.
+The server first checks the starting letter deterministically, then uses a trusted built-in answer dictionary for common words and AI validation for answers outside that dictionary. This keeps common valid answers reliable while still supporting less-common answers.
 
 ### 🏆 Scoring
 
