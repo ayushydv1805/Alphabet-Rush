@@ -1,5 +1,38 @@
 const CATEGORIES = ["name", "place", "thing", "animal", "food"];
 
+const FALLBACK_ANSWERS = {
+  name: new Set([
+    "aarav", "aakash", "abhay", "aditya", "aman", "amit", "ananya", "anjali",
+    "arjun", "aryan", "ayush", "deepak", "diya", "harsh", "isha", "karan",
+    "kunal", "meera", "neha", "rahul", "raj", "rohit", "riya", "sahil",
+    "simran", "varun", "yash", "zoya"
+  ]),
+  place: new Set([
+    "agra", "ahmedabad", "amritsar", "agra", "bangalore", "bathinda",
+    "chandigarh", "chennai", "delhi", "faridabad", "goa", "gurgaon",
+    "hyderabad", "jaipur", "jalandhar", "kashmir", "kolkata", "lucknow",
+    "ludhiana", "manali", "mumbai", "mysore", "nagpur", "new delhi",
+    "patiala", "pune", "shimla", "surat", "yamunanagar"
+  ]),
+  thing: new Set([
+    "apple", "bag", "ball", "bottle", "book", "box", "chair", "clock",
+    "computer", "cup", "door", "fan", "guitar", "hammer", "key", "laptop",
+    "mobile", "pen", "phone", "pillow", "table", "television", "watch",
+    "yacht"
+  ]),
+  animal: new Set([
+    "ant", "ape", "bear", "cat", "cow", "deer", "dog", "donkey", "eagle",
+    "elephant", "fox", "goat", "horse", "lion", "monkey", "mouse", "panda",
+    "rabbit", "rat", "sheep", "tiger", "yak", "zebra"
+  ]),
+  food: new Set([
+    "aam", "aaloo", "aloo", "apple", "banana", "burger", "cake", "carrot",
+    "chicken", "chocolate", "dal", "dosa", "egg", "ice cream", "idli",
+    "mango", "noodles", "orange", "paneer", "pizza", "rice", "roti",
+    "samosa", "sandwich", "tea"
+  ])
+};
+
 const normalizeText = (value) =>
   typeof value === "string" ? value.trim().replace(/\s+/g, " ") : "";
 
@@ -14,36 +47,67 @@ const startsWithLetter = (answer, letter) => {
   );
 };
 
+function extractOutputText(response) {
+  if (typeof response?.output_text === "string") {
+    return response.output_text;
+  }
+
+  if (Array.isArray(response?.output)) {
+    return response.output
+      .flatMap((item) => Array.isArray(item?.content) ? item.content : [])
+      .filter((item) => item?.type === "output_text" && typeof item?.text === "string")
+      .map((item) => item.text)
+      .join("\n");
+  }
+
+  return "";
+}
+
 function parseValidationOutput(outputText) {
   if (typeof outputText !== "string") {
     return null;
   }
 
   const cleaned = outputText
-    .replace(/^\s*```(?:json)?/i, "")
-    .replace(/```\s*$/i, "")
+    .replace(/^\s*\`\`\`(?:json)?/i, "")
+    .replace(/\`\`\`\s*$/i, "")
     .trim();
 
-  try {
-    return JSON.parse(cleaned);
-  } catch (_error) {
-    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      return null;
-    }
+  const candidates = [cleaned];
+  const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
 
+  if (jsonMatch && jsonMatch[0] !== cleaned) {
+    candidates.push(jsonMatch[0]);
+  }
+
+  for (const candidate of candidates) {
     try {
-      return JSON.parse(jsonMatch[0]);
-    } catch (_parseError) {
-      return null;
+      const parsed = JSON.parse(candidate);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return Object.fromEntries(
+          Object.entries(parsed).map(([key, value]) => [
+            normalizeText(key).toLocaleLowerCase(),
+            value
+          ])
+        );
+      }
+    } catch (_error) {
+      // Try the next candidate.
     }
   }
+
+  return null;
 }
 
 function normalizeModelResult(value) {
   if (typeof value === "boolean") return value;
   if (value === 1 || value === "1" || value === "true") return true;
   return false;
+}
+
+function fallbackValidate(category, answer) {
+  const normalized = normalizeText(answer).toLocaleLowerCase();
+  return FALLBACK_ANSWERS[category]?.has(normalized) || false;
 }
 
 function createAnswerValidator(openai) {
@@ -63,7 +127,9 @@ function createAnswerValidator(openai) {
 
   async function validateAnswers(answers, letter) {
     const source = answers && typeof answers === "object" ? answers : {};
-    const result = Object.fromEntries(CATEGORIES.map((category) => [category, false]));
+    const result = Object.fromEntries(
+      CATEGORIES.map((category) => [category, false])
+    );
     const pending = [];
 
     for (const category of CATEGORIES) {
@@ -93,69 +159,90 @@ function createAnswerValidator(openai) {
       return result;
     }
 
-    try {
-      const answerLines = pending
-        .map(
-          ({ category, answer }) =>
-            category.charAt(0).toUpperCase() +
-            category.slice(1) +
-            ": " +
-            answer
-        )
-        .join("\n");
+    const answerLines = pending
+      .map(
+        ({ category, answer }) =>
+          category.charAt(0).toUpperCase() + category.slice(1) + ": " + answer
+      )
+      .join("\n");
 
-      const response = await openai.responses.create({
-        model: process.env.OPENAI_MODEL || "gpt-5.6-luna",
-        input:
-          "You are the answer judge for a friendly Name-Place-Thing style word game.\n\n" +
-          "Round letter: " +
-          normalizeText(letter) +
-          "\n\n" +
-          "Validate each answer independently. The server already checks that every answer starts with the round letter. Your job is only to decide whether the answer genuinely fits its category.\n\n" +
-          "IMPORTANT: Be permissive, not overly strict. Accept valid and understandable examples even when they are less common, regional, proper nouns, alternate spellings, species names, cities/villages, landmarks, foods/ingredients, or ordinary objects. Do not reject an answer just because you personally do not recognize it immediately.\n\n" +
-          "Return false only when the answer is clearly nonsense, clearly belongs to another category, or is not a meaningful example of the requested category.\n\n" +
-          "Category meanings:\n" +
-          "- Name: a person's given name, surname, or commonly used personal name.\n" +
-          "- Place: a real geographic place such as a city, town, village, state, country, landmark, or region.\n" +
-          "- Thing: a tangible object, item, product, or ordinary thing.\n" +
-          "- Animal: an animal or recognized animal species/breed.\n" +
-          "- Food: a food, dish, ingredient, fruit, vegetable, snack, or beverage.\n\n" +
-          "Examples:\n" +
-          "A + Name + Amit = true\n" +
-          "A + Place + Agra = true\n" +
-          "A + Thing + Apple = true\n" +
-          "A + Animal + Ant = true\n" +
-          "A + Food + Apple = true\n" +
-          "A + Animal + Ace = false\n" +
-          "A + Food + Agra = false\n\n" +
-          "Answers to judge:\n" +
-          answerLines +
-          "\n\nReturn ONLY valid JSON with exactly these keys: " +
-          pending.map(({ category }) => category).join(", ") +
-          ". Each value must be true or false. No markdown, no explanation."
-      });
+    let lastError;
 
-      const parsed = parseValidationOutput(response?.output_text);
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        const response = await openai.responses.create({
+          model: process.env.OPENAI_MODEL || "gpt-5.6-luna",
+          input:
+            "You are the answer judge for a friendly Name-Place-Thing style word game.\n\n" +
+            "Round letter: " +
+            normalizeText(letter) +
+            "\n\n" +
+            "The server already checks that every answer starts with the round letter. Validate whether each answer genuinely belongs to its requested category.\n\n" +
+            "Be permissive and accept valid examples even when they are less common, regional, proper nouns, alternate spellings, species or breeds, towns/villages, landmarks, ingredients, foods or ordinary objects.\n\n" +
+            "Return false only when an answer is clearly nonsense, clearly belongs to another category, or is not a meaningful example of the category.\n\n" +
+            "Category meanings:\n" +
+            "- Name: a real person's name.\n" +
+            "- Place: a real geographic place such as a city, town, village, state, country, landmark, or region.\n" +
+            "- Thing: a tangible object, item, product, or ordinary thing.\n" +
+            "- Animal: an animal, species, or recognized breed.\n" +
+            "- Food: a food, dish, ingredient, fruit, vegetable, snack, or beverage.\n\n" +
+            "Examples:\n" +
+            "A + Name + Amit = true\n" +
+            "A + Place + Agra = true\n" +
+            "A + Thing + Apple = true\n" +
+            "A + Animal + Ant = true\n" +
+            "A + Food + Apple = true\n" +
+            "A + Animal + Ace = false\n" +
+            "A + Food + Agra = false\n\n" +
+            "Answers to judge:\n" +
+            answerLines +
+            "\n\nReturn ONLY one JSON object. Use the exact lowercase category keys supplied below and boolean values. No markdown and no explanation. Keys: " +
+            pending.map(({ category }) => category).join(", ")
+        });
 
-      if (!parsed || typeof parsed !== "object") {
-        throw new Error("AI validator returned invalid JSON.");
+        const parsed = parseValidationOutput(extractOutputText(response));
+
+        if (!parsed) {
+          throw new Error("AI validator returned an unreadable response.");
+        }
+
+        for (const item of pending) {
+          const modelValue = parsed[item.category];
+
+          if (modelValue === undefined) {
+            throw new Error(
+              "AI validator omitted category: " + item.category
+            );
+          }
+
+          const value = normalizeModelResult(modelValue);
+          result[item.category] = value;
+          cacheSet(item.key, value);
+        }
+
+        return result;
+      } catch (error) {
+        lastError = error;
       }
+    }
 
-      for (const item of pending) {
-        const value = normalizeModelResult(parsed[item.category]);
-        result[item.category] = value;
+    console.error(
+      "AI validation unavailable:",
+      lastError?.message || "Unknown error"
+    );
+
+    // Graceful degradation: keep deterministic letter validation and use a
+    // small server-side common-answer dictionary instead of marking every
+    // clearly known answer as wrong when the AI service is temporarily down.
+    for (const item of pending) {
+      const value = fallbackValidate(item.category, item.answer);
+      result[item.category] = value;
+      if (value) {
         cacheSet(item.key, value);
       }
-
-      return result;
-    } catch (error) {
-      console.error("AI validation error:", error.message);
-
-      // Keep all answers that pass the authoritative letter check as false
-      // when the AI service fails. This avoids awarding points on an
-      // unverified category match while keeping the game round alive.
-      return result;
     }
+
+    return result;
   }
 
   async function validateAnswer(answer, category, letter) {
