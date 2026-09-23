@@ -472,6 +472,7 @@ The current implementation is intentionally prototype-oriented:
 - There is no user authentication system.
 - Answer validation depends on the OpenAI service.
 - AI validation failures currently resolve as invalid answers.
+- The validator caches successful category results only for the lifetime of the server process.
 - The design is not currently configured for multiple Socket.IO server instances.
 - There is no complete automated test suite.
 - CORS is explicitly configured for the current frontend origins.
