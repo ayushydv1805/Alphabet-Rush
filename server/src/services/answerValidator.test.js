@@ -195,3 +195,37 @@ test("accepts the common N round answers without relying on AI", async () => {
   });
   assert.equal(openai.callCount, 0);
 });
+
+
+test("accepts the common R round answers without relying on AI", async () => {
+  const openai = createMockOpenAI(
+    JSON.stringify({
+      name: false,
+      place: false,
+      thing: false,
+      animal: false,
+      food: false,
+    })
+  );
+
+  const validator = createAnswerValidator(openai);
+  const result = await validator.validateAnswers(
+    {
+      name: "Rahul",
+      place: "Rewari",
+      thing: "rope",
+      animal: "rabbit",
+      food: "rice",
+    },
+    "R"
+  );
+
+  assert.deepEqual(result, {
+    name: true,
+    place: true,
+    thing: true,
+    animal: true,
+    food: true,
+  });
+  assert.equal(openai.callCount, 0);
+});
