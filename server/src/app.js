@@ -13,7 +13,9 @@ const { createGameEngine } = require("./game/gameEngine");
 const { registerSocketHandlers } = require("./socket/registerHandlers");
 
 function createApp() {
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  const openai = process.env.OPENAI_API_KEY
+    ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+    : null;
   const app = express();
 
   app.use(cors());
@@ -21,6 +23,13 @@ function createApp() {
 
   app.get("/", (_req, res) => {
     res.send("Alphabet Rush Server is running!");
+  });
+
+  app.get("/health", (_req, res) => {
+    res.json({
+      ok: true,
+      validator: openai ? "ai" : "fallback",
+    });
   });
 
   const server = http.createServer(app);
