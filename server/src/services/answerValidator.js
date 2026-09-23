@@ -5,37 +5,41 @@ const FALLBACK_ANSWERS = {
     "aarav", "aakash", "abhay", "aditya", "aman", "amit", "ananya", "anjali",
     "arjun", "aryan", "ayush", "bhavna", "deepak", "diya", "farhan", "harsh",
     "isha", "karan", "kavya", "kunal", "meera", "nikhil", "nisha", "nitin",
-    "pooja", "rahul", "raj", "rajesh", "ravi", "rohan", "rohit", "riya", "sahil",
-    "simran", "varun", "vijay", "vikas", "yash", "yuvan", "zoya"
+    "pooja", "rahul", "raj", "rajesh", "rakesh", "ravi", "reena", "riya", "rohan",
+    "rohit", "sahil", "simran", "sonia", "varun", "vijay", "vikas", "yash",
+    "yuvan", "zoya"
   ]),
   place: new Set([
     "agra", "ahmedabad", "amritsar", "bangalore", "bathinda", "bhopal", "chandigarh",
     "chennai", "delhi", "faridabad", "goa", "gurgaon", "haridwar", "hisar",
     "hyderabad", "jaipur", "jalandhar", "kashmir", "kochi", "kolkata", "kurukshetra",
     "lucknow", "ludhiana", "manali", "mathura", "meerut", "mumbai", "mysore",
-    "nagaland", "nagpur", "nainital", "new delhi", "patiala", "pune", "shimla",
-    "surat", "udaipur", "varanasi", "yamunanagar"
+    "nagaland", "nagpur", "nainital", "new delhi", "patiala", "pune", "rajkot",
+    "ranchi", "rewari", "rishikesh", "rohtak", "roorkee", "shimla", "surat",
+    "udaipur", "varanasi", "yamunanagar"
   ]),
   thing: new Set([
     "apple", "bag", "ball", "belt", "bicycle", "bottle", "book", "box", "brush",
     "camera", "chair", "clock", "computer", "cup", "desk", "door", "fan", "fork",
     "glasses", "guitar", "hair", "hammer", "hat", "helmet", "key", "keyboard",
     "knife", "laptop", "lock", "mobile", "monitor", "mouse", "nail", "notebook",
-    "pen", "phone", "pillow", "plate", "remote", "ring", "shirt", "shoe", "spoon",
-    "table", "television", "umbrella", "watch", "wallet", "yacht", "yo-yo"
+    "pen", "phone", "pillow", "plate", "radio", "rack", "razor", "remote", "ring",
+    "robot", "rocket", "rope", "ruler", "shirt", "shoe", "spoon", "table",
+    "television", "umbrella", "watch", "wallet", "yacht", "yo-yo"
   ]),
   animal: new Set([
     "ant", "ape", "bear", "camel", "cat", "cow", "deer", "dog", "donkey", "eagle",
     "elephant", "fox", "goat", "hen", "horse", "hyena", "ibex", "jaguar", "koala",
-    "lion", "monkey", "mouse", "narwhal", "ox", "panda", "rabbit", "rat", "sheep",
-    "tiger", "vulture", "wolf", "yak", "zebra"
+    "lion", "monkey", "mouse", "narwhal", "ox", "panda", "rabbit", "raccoon", "ram",
+    "rat", "reindeer", "rhinoceros", "rooster", "sheep", "tiger", "vulture", "wolf",
+    "yak", "zebra"
   ]),
   food: new Set([
     "aam", "aaloo", "aloo", "apple", "banana", "bread", "burger", "cake", "carrot",
     "cheese", "chicken", "chocolate", "dal", "dosa", "egg", "halwa", "honey",
     "ice cream", "idli", "jalebi", "kheer", "mango", "noodles", "orange", "paneer",
-    "pasta", "pizza", "poha", "rice", "roti", "samosa", "sandwich", "tea", "upma",
-    "vada", "yogurt", "zucchini"
+    "pasta", "pizza", "poha", "rabri", "raita", "rajma", "ramen", "rasgulla", "ravioli",
+    "rice", "roti", "samosa", "sandwich", "tea", "upma", "vada", "yogurt", "zucchini"
   ])
 };
 
