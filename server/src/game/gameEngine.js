@@ -52,6 +52,7 @@ function createGameEngine({ io }) {
       hostId: room.hostId,
       currentRound: room.currentRound,
       totalRounds: room.rounds,
+      totalPlayers: room.players.length,
       letter: room.currentLetter,
       endReason,
       winnerIds: room.winnerIds,
@@ -132,6 +133,7 @@ function createGameEngine({ io }) {
       rounds: room.rounds,
       currentRound: room.currentRound,
       totalRounds: room.rounds,
+      totalPlayers: room.players.length,
       letter: room.currentLetter,
       timeLimit: ROUND_TIME_LIMIT / 1000,
     });

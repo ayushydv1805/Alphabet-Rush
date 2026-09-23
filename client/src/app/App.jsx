@@ -1,4 +1,5 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
+import SoundToggle from "../components/common/SoundToggle";
 import ThemeToggle from "../components/common/ThemeToggle";
 import CreateRoom from "../pages/CreateRoom";
 import Game from "../pages/Game";
@@ -12,6 +13,7 @@ import WaitingRoom from "../pages/WaitingRoom";
 function App() {
   return (
     <BrowserRouter>
+      <SoundToggle />
       <ThemeToggle />
       <Routes>
         <Route path="/" element={<Home />} />

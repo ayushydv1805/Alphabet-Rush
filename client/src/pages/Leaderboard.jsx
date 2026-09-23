@@ -1,12 +1,14 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import PlayerList from "../components/rooms/PlayerList";
+import { playGameSound } from "../services/sound";
 import socket from "../services/socket";
 
 function Leaderboard() {
   const location = useLocation();
   const navigate = useNavigate();
   const gameData = location.state;
+  const celebrationPlayed = useRef(false);
 
   useEffect(() => {
     const handleGameStarted = (nextGameData) => {
@@ -17,13 +19,21 @@ function Leaderboard() {
     return () => socket.off("gameStarted", handleGameStarted);
   }, [navigate]);
 
+  useEffect(() => {
+    if (!gameData || celebrationPlayed.current) return;
+    celebrationPlayed.current = true;
+    playGameSound("winner");
+  }, [gameData]);
+
   if (!gameData) {
     return (
       <main className="room-container">
         <section className="room-card">
           <div className="room-icon">🏆</div>
           <h1>Leaderboard unavailable</h1>
-          <p className="room-subtitle">The final results are no longer available.</p>
+          <p className="room-subtitle">
+            The final results are no longer available.
+          </p>
           <button className="main-room-btn" type="button" onClick={() => navigate("/")}>
             BACK TO HOME
           </button>
@@ -43,7 +53,7 @@ function Leaderboard() {
   return (
     <main className="room-container">
       <section className="waiting-card leaderboard-card">
-        <div className="result-hero">
+        <div className="result-hero result-hero-animated">
           <div className="room-icon" aria-hidden="true">🏆</div>
           <p className="home-eyebrow">FINAL RESULTS</p>
           <h1>Game Complete</h1>
@@ -52,12 +62,18 @@ function Leaderboard() {
           </p>
         </div>
 
-        <div className="overall-winner-banner">
+        <div className="overall-winner-banner winner-banner-pop">
           <span className="overall-trophy" aria-hidden="true">👑</span>
           <div>
             <small>OVERALL WINNER{winners.length > 1 ? "S" : ""}</small>
-            <strong>{winners.length ? winners.map((player) => player.name).join(" · ") : "No winner"}</strong>
-            <span>{topScore} total point{topScore === 1 ? "" : "s"}</span>
+            <strong>
+              {winners.length
+                ? winners.map((player) => player.name).join(" · ")
+                : "No winner"}
+            </strong>
+            <span>
+              {topScore} total point{topScore === 1 ? "" : "s"}
+            </span>
           </div>
         </div>
 
@@ -74,7 +90,10 @@ function Leaderboard() {
           <button
             className="start-game-btn"
             type="button"
-            onClick={() => socket.emit("rematch", { roomCode: gameData.roomCode })}
+            onClick={() => {
+              playGameSound("nextRound");
+              socket.emit("rematch", { roomCode: gameData.roomCode });
+            }}
           >
             🔄 PLAY AGAIN
           </button>

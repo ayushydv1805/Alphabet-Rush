@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import AnswerField from "../components/game/AnswerField";
 import PlayerSubmissionStatus from "../components/game/PlayerSubmissionStatus";
 import { ANSWER_FIELDS, DEFAULT_TIME_LIMIT } from "../constants/game";
+import { playGameSound } from "../services/sound";
 import socket from "../services/socket";
 
 const EMPTY_ANSWERS = {
@@ -18,9 +19,9 @@ function Game() {
   const navigate = useNavigate();
   const gameData = location.state;
 
-  const [timeLeft, setTimeLeft] = useState(
-    gameData?.timeLimit || DEFAULT_TIME_LIMIT
-  );
+  const totalTime = gameData?.timeLimit || DEFAULT_TIME_LIMIT;
+
+  const [timeLeft, setTimeLeft] = useState(totalTime);
   const [answers, setAnswers] = useState(EMPTY_ANSWERS);
   const [submitted, setSubmitted] = useState(false);
   const [submittedPlayers, setSubmittedPlayers] = useState([]);
@@ -33,13 +34,37 @@ function Game() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [timeLeft, gameData, submitted]);
+  }, [gameData, submitted, timeLeft]);
+
+  useEffect(() => {
+    if (submitted || timeLeft <= 0) return;
+
+    if (timeLeft <= 5) {
+      playGameSound("urgent");
+    } else if (timeLeft <= 10) {
+      playGameSound("tick");
+    }
+  }, [timeLeft, submitted]);
+
+  useEffect(() => {
+    if (!gameData || submitted || timeLeft !== 0) return;
+    playGameSound("timeup");
+  }, [gameData, submitted, timeLeft]);
 
   useEffect(() => {
     const handlePlayerSubmitted = (playerData) => {
       setSubmittedPlayers((previousPlayers) => {
-        if (previousPlayers.includes(playerData.playerId)) return previousPlayers;
-        return [...previousPlayers, playerData.playerId];
+        if (previousPlayers.some((player) => player.playerId === playerData.playerId)) {
+          return previousPlayers;
+        }
+
+        return [
+          ...previousPlayers,
+          {
+            playerId: playerData.playerId,
+            playerName: playerData.playerName,
+          },
+        ];
       });
     };
 
@@ -50,6 +75,13 @@ function Game() {
   useEffect(() => {
     const handleRoundEnded = (roundData) => {
       setSubmitted(true);
+
+      if (roundData.winnerIds?.includes(socket.id)) {
+        playGameSound("winner");
+      } else {
+        playGameSound("roundEnd");
+      }
+
       navigate("/round-result", {
         state: {
           ...gameData,
@@ -74,6 +106,8 @@ function Game() {
   const handleSubmit = () => {
     if (!gameData || submitted || timeLeft <= 0) return;
 
+    playGameSound("submit");
+
     socket.emit("submitAnswers", {
       roomCode: gameData.roomCode,
       answers,
@@ -82,9 +116,15 @@ function Game() {
 
     setSubmitted(true);
     setSubmittedPlayers((previousPlayers) =>
-      previousPlayers.includes(socket.id)
+      previousPlayers.some((player) => player.playerId === socket.id)
         ? previousPlayers
-        : [...previousPlayers, socket.id]
+        : [
+            ...previousPlayers,
+            {
+              playerId: socket.id,
+              playerName: gameData.playerName || "You",
+            },
+          ]
     );
   };
 
@@ -110,6 +150,14 @@ function Game() {
   }
 
   const submittedCount = submittedPlayers.length;
+  const totalPlayers = gameData.totalPlayers || Math.max(submittedCount, 1);
+  const progress = Math.max(0, Math.min(100, (timeLeft / totalTime) * 100));
+  const timerClass =
+    timeLeft <= 5
+      ? "timer timer-critical"
+      : timeLeft <= 10
+        ? "timer timer-warning"
+        : "timer";
 
   return (
     <main className="game-container">
@@ -118,26 +166,52 @@ function Game() {
           <div>
             <p className="game-kicker">ALPHABET RUSH</p>
             <h1>Round {gameData.currentRound}</h1>
-            <p>Round {gameData.currentRound} of {gameData.totalRounds}</p>
+            <p>
+              Round {gameData.currentRound} of {gameData.totalRounds}
+            </p>
           </div>
 
-          <div className={timeLeft <= 10 ? "timer timer-warning" : "timer"}>
-            <span>⏱️ {timeLeft}s</span>
-            {timeLeft <= 10 && timeLeft > 0 && <small>Hurry!</small>}
+          <div className="timer-wrap">
+            <div className={timerClass} aria-live="polite">
+              <span>⏱️ {timeLeft}s</span>
+              {timeLeft <= 10 && timeLeft > 0 && (
+                <small>{timeLeft <= 5 ? "FINAL SECONDS!" : "Hurry!"}</small>
+              )}
+            </div>
           </div>
         </header>
 
+        <div className="timer-progress" aria-hidden="true">
+          <span style={{ width: progress + "%" }} />
+        </div>
+
+        {timeLeft <= 5 && timeLeft > 0 ? (
+          <div className="countdown-rush" role="status" aria-live="assertive">
+            <strong>{timeLeft}</strong>
+            <span>FINAL SECONDS</span>
+          </div>
+        ) : null}
+
         <section className="letter-section" aria-label="Round letter">
           <span>YOUR LETTER</span>
-          <div className="letter">{gameData.letter}</div>
-          <p className="letter-hint">Every answer must start with {gameData.letter}.</p>
+          <div className="letter letter-live">{gameData.letter}</div>
+          <p className="letter-hint">
+            Every answer must start with {gameData.letter}.
+          </p>
         </section>
 
-        <PlayerSubmissionStatus submittedCount={submittedCount} />
+        <PlayerSubmissionStatus
+          submittedCount={submittedCount}
+          totalPlayers={totalPlayers}
+          submittedPlayers={submittedPlayers}
+        />
 
         {submitted ? (
-          <div className="waiting-message game-waiting-state">
-            ✅ Your answers are locked. Waiting for the other players or the timer...
+          <div className="waiting-message game-waiting-state submission-feedback">
+            <strong>✅ Answers locked</strong>
+            <span>
+              Waiting for the other players or the timer to finish the round.
+            </span>
           </div>
         ) : null}
 
@@ -160,7 +234,7 @@ function Game() {
           disabled={submitted || timeLeft <= 0}
         >
           {submitted
-            ? "ANSWERS SUBMITTED"
+            ? "✓ ANSWERS LOCKED"
             : timeLeft <= 0
               ? "TIME'S UP"
               : "SUBMIT ANSWERS"}

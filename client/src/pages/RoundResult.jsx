@@ -1,7 +1,9 @@
 import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import PlayerList from "../components/rooms/PlayerList";
+import RoundReveal from "../components/game/RoundReveal";
 import { ANSWER_FIELDS } from "../constants/game";
+import { playGameSound } from "../services/sound";
 import socket from "../services/socket";
 
 function RoundResult() {
@@ -62,7 +64,7 @@ function RoundResult() {
   return (
     <main className="room-container">
       <section className="waiting-card result-card">
-        <div className="result-hero">
+        <div className="result-hero result-hero-animated">
           <div className="room-icon" aria-hidden="true">🏆</div>
           <p className="home-eyebrow">ROUND COMPLETE</p>
           <h1>Round {resultData.currentRound} Results</h1>
@@ -74,7 +76,7 @@ function RoundResult() {
           </p>
         </div>
 
-        <div className="round-winner-banner">
+        <div className="round-winner-banner winner-banner-pop">
           <span className="round-winner-icon" aria-hidden="true">👑</span>
           <div>
             <small>
@@ -93,7 +95,20 @@ function RoundResult() {
           </div>
         </div>
 
-        {me && (
+        {me ? (
+          <div className="my-round-score-card score-pop">
+            <div>
+              <span>YOUR ROUND SCORE</span>
+              <strong>+{me.roundPoints || 0}</strong>
+            </div>
+            <div className="my-round-score-total">
+              <span>OVERALL</span>
+              <strong>{me.score}</strong>
+            </div>
+          </div>
+        ) : null}
+
+        {me ? (
           <section className="answer-review">
             <div className="section-title">
               <h2>Your answers</h2>
@@ -103,7 +118,7 @@ function RoundResult() {
             </div>
 
             <div className="answer-review-grid">
-              {ANSWER_FIELDS.map((field) => {
+              {ANSWER_FIELDS.map((field, index) => {
                 const value = me.answers?.[field.name] || "";
                 const isCorrect = Boolean(me.validation?.[field.name]);
 
@@ -111,9 +126,10 @@ function RoundResult() {
                   <article
                     className={
                       isCorrect
-                        ? "review-card correct"
-                        : "review-card incorrect"
+                        ? "review-card correct review-card-animated"
+                        : "review-card incorrect review-card-animated"
                     }
+                    style={{ animationDelay: index * 70 + "ms" }}
                     key={field.name}
                   >
                     <div className="review-card-top">
@@ -137,7 +153,13 @@ function RoundResult() {
               })}
             </div>
           </section>
-        )}
+        ) : null}
+
+        <RoundReveal
+          players={players}
+          fields={ANSWER_FIELDS}
+          currentPlayerId={socket.id}
+        />
 
         <section className="round-score-section">
           <div className="section-title">
@@ -159,9 +181,10 @@ function RoundResult() {
             <button
               className="start-game-btn"
               type="button"
-              onClick={() =>
-                socket.emit("nextRound", { roomCode: resultData.roomCode })
-              }
+              onClick={() => {
+                playGameSound("nextRound");
+                socket.emit("nextRound", { roomCode: resultData.roomCode });
+              }}
             >
               {isLastRound ? "🏆 FINISH GAME" : "NEXT ROUND →"}
             </button>

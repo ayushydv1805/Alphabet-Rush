@@ -554,3 +554,111 @@ html[data-theme="light"] .round-winner-card {
     font-size: 11px;
   }
 }
+
+/* -------------------- Game feel / phase 1 -------------------- */
+
+.global-sound-toggle {
+  position: fixed;
+  top: 22px;
+  right: 134px;
+  z-index: 1000;
+  min-width: 92px;
+  min-height: 44px;
+  padding: 0 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--ar-border);
+  border-radius: 999px;
+  background: var(--ar-surface);
+  color: var(--ar-text);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 12px 30px var(--ar-shadow);
+  backdrop-filter: blur(18px);
+  transition: transform var(--ar-transition), border-color var(--ar-transition), box-shadow var(--ar-transition);
+}
+
+.global-sound-toggle:hover {
+  transform: translateY(-2px);
+  border-color: var(--ar-border-strong);
+  box-shadow: 0 16px 36px var(--ar-shadow);
+}
+
+.global-sound-icon {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.submission-status {
+  position: relative;
+  overflow: hidden;
+}
+
+.submission-status::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(99, 102, 241, 0.06), transparent 42%);
+}
+
+.submission-status-copy {
+  position: relative;
+  z-index: 1;
+}
+
+.submission-status-copy strong {
+  display: block;
+}
+
+.submission-status-copy p {
+  margin-top: 4px;
+}
+
+.submission-players {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 124px;
+}
+
+.submission-player {
+  width: 29px;
+  height: 29px;
+  margin-left: -6px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--ar-surface);
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--ar-accent), var(--ar-accent-3));
+  color: white;
+  font-size: 9px;
+  font-weight: 900;
+  box-shadow: 0 5px 14px var(--ar-shadow);
+  animation: submissionPop 320ms ease-out both;
+}
+
+.submission-more {
+  min-width: 29px;
+  height: 29px;
+  margin-left: -6px;
+  padding: 0 7px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--ar-surface);
+  border-radius: 999px;
+  background: var(--ar-surface-soft);
+  color: var(--ar-muted);
+  font-size: 8px;
+  font-weight: 900;
+}
+
+@keyframes submissionPop {
+  from { opacity: 0; transform: scale(0.65); }
+  to { opacity: 1; transform: scale(1); }
+}
