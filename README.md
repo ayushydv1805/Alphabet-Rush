@@ -563,3 +563,6 @@ Alphabet Rush is a learning, experimentation and multiplayer gameplay project. A
 [Play Alphabet Rush →](https://alphabet-rush.vercel.app/)
 
 [View Repository →](https://github.com/ayushydv1805/Alphabet-Rush)
+
+
+> Validation note: answer submissions now perform a deterministic starting-letter check before AI validation and use a safe fallback for known valid answers when the validation service is unavailable.
