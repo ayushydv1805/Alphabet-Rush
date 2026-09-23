@@ -55,7 +55,7 @@ test("accepts valid category results returned by the AI", async () => {
 test("rejects wrong starting letters before calling the AI", async () => {
   const openai = createMockOpenAI(
     JSON.stringify({
-      animal: true,
+      name: true,
     })
   );
 
