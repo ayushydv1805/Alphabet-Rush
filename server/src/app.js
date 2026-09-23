@@ -27,12 +27,12 @@ function createApp() {
   const io = new Server(server, { cors: createCorsOptions() });
 
   const { startRound, endRound } = createGameEngine({ io, rooms });
-  const validateAnswer = createAnswerValidator(openai);
+  const { validateAnswers } = createAnswerValidator(openai);
 
   registerSocketHandlers({
     io,
     rooms,
-    validateAnswer,
+    validateAnswers,
     startRound,
     endRound,
   });
