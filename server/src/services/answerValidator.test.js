@@ -88,6 +88,34 @@ test("parses JSON wrapped in a markdown code fence", async () => {
   assert.equal(result.animal, true);
 });
 
+test("falls back to known valid answers when the AI service is unavailable", async () => {
+  const openai = {
+    responses: {
+      create: async () => {
+        throw new Error("simulated API outage");
+      },
+    },
+  };
+
+  const validator = createAnswerValidator(openai);
+  const result = await validator.validateAnswers(
+    {
+      name: "Yash",
+      place: "Yamunanagar",
+      thing: "yacht",
+      animal: "yak",
+      food: "yummy",
+    },
+    "Y"
+  );
+
+  assert.equal(result.name, true);
+  assert.equal(result.place, true);
+  assert.equal(result.thing, true);
+  assert.equal(result.animal, true);
+  assert.equal(result.food, false);
+});
+
 test("reuses cached positive validations", async () => {
   const openai = createMockOpenAI(JSON.stringify({ place: true }));
   const validator = createAnswerValidator(openai);
