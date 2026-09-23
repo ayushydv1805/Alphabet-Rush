@@ -62,7 +62,7 @@ flowchart TD
 
 Each answer should be non-empty, match the selected category, and begin with the required letter.
 
-Five category checks run concurrently.
+The server performs an authoritative starting-letter check and sends the submitted categories to the AI validator in one batched request. Successful validations are cached for the lifetime of the server process.
 
 ### Scoring
 
