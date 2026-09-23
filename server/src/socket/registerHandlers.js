@@ -38,7 +38,7 @@ function normalizeAnswers(value) {
   };
 }
 
-function registerSocketHandlers({ io, validateAnswer, startRound, endRound }) {
+function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
   io.on("connection", (socket) => {
     console.log("Player connected:", socket.id);
 
@@ -174,22 +174,7 @@ function registerSocketHandlers({ io, validateAnswer, startRound, endRound }) {
 
       let validation;
       try {
-        const [nameValid, placeValid, thingValid, animalValid, foodValid] =
-          await Promise.all([
-            validateAnswer(safeAnswers.name, "Name", letter),
-            validateAnswer(safeAnswers.place, "Place", letter),
-            validateAnswer(safeAnswers.thing, "Thing", letter),
-            validateAnswer(safeAnswers.animal, "Animal", letter),
-            validateAnswer(safeAnswers.food, "Food", letter),
-          ]);
-
-        validation = {
-          name: nameValid,
-          place: placeValid,
-          thing: thingValid,
-          animal: animalValid,
-          food: foodValid,
-        };
+        validation = await validateAnswers(safeAnswers, letter);
       } finally {
         room.pendingValidations = Math.max(0, room.pendingValidations - 1);
       }
