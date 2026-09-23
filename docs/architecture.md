@@ -97,7 +97,7 @@ Owns starting rounds, resetting per-round data, timers, ending rounds and broadc
 
 ### server/src/services/answerValidator.js
 
-Keeps OpenAI-specific validation code outside the socket event layer. The validator performs an authoritative starting-letter check before AI validation, validates a submission in one batched model call, and caches successful category validations in memory.
+Keeps OpenAI-specific validation code outside the socket event layer. The validator performs an authoritative starting-letter check first, accepts known unambiguous answers from a small deterministic safety dictionary, then uses OpenAI Structured Outputs for unknown answers. A second, more permissive AI review runs only when the first AI pass rejects an unknown answer, reducing false negatives while keeping the common path fast. Positive validations are cached in memory.
 
 ### server/src/store/rooms.js
 
