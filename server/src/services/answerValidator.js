@@ -215,9 +215,18 @@ function createAnswerValidator(openai) {
             );
           }
 
-          const value = normalizeModelResult(modelValue);
+          const modelValueNormalized = normalizeModelResult(modelValue);
+          const trustedLocalMatch = fallbackValidate(
+            item.category,
+            item.answer
+          );
+          const value = modelValueNormalized || trustedLocalMatch;
+
           result[item.category] = value;
-          cacheSet(item.key, value);
+
+          if (value) {
+            cacheSet(item.key, value);
+          }
         }
 
         return result;
