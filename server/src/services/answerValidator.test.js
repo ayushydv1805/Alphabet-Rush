@@ -33,11 +33,11 @@ test("accepts valid category results returned by the AI", async () => {
 
   const result = await validator.validateAnswers(
     {
-      name: "Amit",
-      place: "Agra",
-      thing: "Apple",
-      animal: "Ant",
-      food: "Aloo",
+      name: "Anmol",
+      place: "Aizawl",
+      thing: "Abacus",
+      animal: "Alligator",
+      food: "Avocado",
     },
     "A"
   );
@@ -63,7 +63,7 @@ test("rejects wrong starting letters before calling the AI", async () => {
 
   const result = await validator.validateAnswers(
     {
-      name: "Amit",
+      name: "Anmol",
       animal: "Cat",
     },
     "A"
@@ -81,7 +81,7 @@ test("parses JSON wrapped in a markdown code fence", async () => {
 
   const validator = createAnswerValidator(openai);
   const result = await validator.validateAnswers(
-    { animal: "Ant" },
+    { animal: "Alligator" },
     "A"
   );
 
@@ -120,8 +120,8 @@ test("reuses cached positive validations", async () => {
   const openai = createMockOpenAI(JSON.stringify({ place: true }));
   const validator = createAnswerValidator(openai);
 
-  const first = await validator.validateAnswers({ place: "Agra" }, "A");
-  const second = await validator.validateAnswers({ place: "Agra" }, "A");
+  const first = await validator.validateAnswers({ place: "Asansol" }, "A");
+  const second = await validator.validateAnswers({ place: "Asansol" }, "A");
 
   assert.equal(first.place, true);
   assert.equal(second.place, true);
