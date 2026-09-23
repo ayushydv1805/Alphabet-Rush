@@ -2,19 +2,33 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { createAnswerValidator } = require("./answerValidator");
 
-function createMockOpenAI(outputText) {
+function createMockOpenAI(outputText, options = {}) {
   let callCount = 0;
+  const calls = [];
+  const responses = Array.isArray(outputText) ? [...outputText] : [outputText];
 
   return {
     responses: {
-      create: async () => {
+      create: async (request) => {
         callCount += 1;
-        return { output_text: outputText };
+        calls.push(request);
+
+        const next = responses[Math.min(callCount - 1, responses.length - 1)];
+
+        if (next instanceof Error) {
+          throw next;
+        }
+
+        return { output_text: next };
       },
     },
     get callCount() {
       return callCount;
     },
+    get calls() {
+      return calls;
+    },
+    ...options,
   };
 }
 
@@ -228,4 +242,61 @@ test("accepts the common R round answers without relying on AI", async () => {
     food: true,
   });
   assert.equal(openai.callCount, 0);
+});
+
+
+test("runs a second AI review when the first pass rejects an unknown answer", async () => {
+  const openai = createMockOpenAI([
+    JSON.stringify({ thing: false }),
+    JSON.stringify({ thing: true }),
+  ]);
+
+  const validator = createAnswerValidator(openai);
+  const result = await validator.validateAnswers(
+    { thing: "Racket" },
+    "R"
+  );
+
+  assert.equal(result.thing, true);
+  assert.equal(openai.callCount, 2);
+  assert.equal(
+    openai.calls[0].text.format.type,
+    "json_schema"
+  );
+  assert.equal(
+    openai.calls[1].text.format.name,
+    "alphabet_rush_validation"
+  );
+});
+
+test("does not call AI for an obvious trusted answer", async () => {
+  const openai = createMockOpenAI(
+    JSON.stringify({ thing: false })
+  );
+
+  const validator = createAnswerValidator(openai);
+  const result = await validator.validateAnswers(
+    { thing: "Rope" },
+    "R"
+  );
+
+  assert.equal(result.thing, true);
+  assert.equal(openai.callCount, 0);
+});
+
+test("uses the configured model", async () => {
+  const openai = createMockOpenAI(
+    JSON.stringify({ place: true })
+  );
+
+  const validator = createAnswerValidator(openai, {
+    model: "test-model",
+  });
+
+  await validator.validateAnswers(
+    { place: "Aizawl" },
+    "A"
+  );
+
+  assert.equal(openai.calls[0].model, "test-model");
 });
