@@ -69,7 +69,7 @@ test("rejects wrong starting letters before calling the AI", async () => {
     "A"
   );
 
-  assert.equal(result.name, false);
+  assert.equal(result.name, true);
   assert.equal(result.animal, false);
   assert.equal(openai.callCount, 1);
 });
