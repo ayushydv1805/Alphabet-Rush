@@ -158,7 +158,7 @@ function buildJudgePrompt(letter, items, secondPass = false) {
 }
 
 async function createJudgeCall(openai, model, letter, items, secondPass = false) {
-  return openai.responses.create({
+  const request = {
     model,
     input: buildJudgePrompt(letter, items, secondPass),
     text: {
@@ -170,7 +170,16 @@ async function createJudgeCall(openai, model, letter, items, secondPass = false)
         schema: buildSchema(items.map(({ category }) => category)),
       },
     },
-  });
+  };
+
+  // For second-chance reviews, let the model use web search when a doubtful
+  // answer needs external factual confirmation. This is especially useful for
+  // real places, animals, foods and less-common proper nouns.
+  if (secondPass) {
+    request.tools = [{ type: "web_search" }];
+  }
+
+  return openai.responses.create(request);
 }
 
 function createAnswerValidator(openai, options = {}) {
