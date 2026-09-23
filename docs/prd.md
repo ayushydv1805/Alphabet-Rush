@@ -62,7 +62,7 @@ flowchart TD
 
 Each answer should be non-empty, match the selected category, and begin with the required letter.
 
-The server performs an authoritative starting-letter check and sends the submitted categories to the AI validator in one batched request. Successful validations are cached for the lifetime of the server process.
+The server performs an authoritative starting-letter check, accepts known unambiguous answers deterministically, and sends unknown answers to an OpenAI Structured Outputs validator. When the first AI pass rejects an unknown answer, a second permissive review checks for a possible false negative. Successful validations are cached for the lifetime of the server process.
 
 ### Scoring
 
