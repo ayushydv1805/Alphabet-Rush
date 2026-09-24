@@ -662,3 +662,130 @@ html[data-theme="light"] .round-winner-card {
   from { opacity: 0; transform: scale(0.65); }
   to { opacity: 1; transform: scale(1); }
 }
+
+
+/* -------------------- Phase 2 progression / cosmetics -------------------- */
+
+.player-avatar {
+  position: relative;
+  font-size: 18px;
+}
+
+.player-streak {
+  display: inline-block;
+  margin-top: 3px;
+  color: var(--ar-warning);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.2px;
+}
+
+.profile-preview-strip {
+  margin-top: 20px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--ar-border);
+  border-radius: 15px;
+  background: var(--ar-surface-soft);
+}
+
+.profile-preview-strip > span {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  border-radius: 11px;
+  background: linear-gradient(135deg, var(--ar-accent), var(--ar-accent-3));
+  font-size: 19px;
+}
+
+.profile-preview-strip > div {
+  min-width: 0;
+  flex: 1;
+  text-align: left;
+}
+
+.profile-preview-strip strong,
+.profile-preview-strip small {
+  display: block;
+}
+
+.profile-preview-strip strong {
+  color: var(--ar-heading);
+  font-size: 11px;
+}
+
+.profile-preview-strip small {
+  margin-top: 2px;
+  color: var(--ar-muted);
+  font-size: 9px;
+}
+
+.profile-preview-link {
+  flex-shrink: 0;
+  padding: 7px 9px;
+  border: 1px solid var(--ar-border);
+  border-radius: 9px;
+  background: var(--ar-input);
+  color: var(--ar-accent);
+  font-size: 8px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.profile-preview-link:hover {
+  border-color: var(--ar-border-strong);
+}
+
+.reveal-score-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.reveal-score-group small {
+  color: var(--ar-warning);
+  font-size: 8px;
+  font-weight: 900;
+}
+
+.round-xp-pill {
+  min-width: 62px;
+  padding: 7px 9px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  border: 1px solid rgba(168, 85, 247, 0.25);
+  border-radius: 11px;
+  background: rgba(168, 85, 247, 0.07);
+}
+
+.round-xp-pill span {
+  font-size: 7px;
+  letter-spacing: 1px;
+  color: var(--ar-muted);
+}
+
+.round-xp-pill strong {
+  color: var(--ar-accent-3);
+  font-size: 14px;
+}
+
+@media (max-width: 640px) {
+  .round-xp-pill {
+    min-width: 56px;
+  }
+
+  .profile-preview-strip {
+    align-items: flex-start;
+  }
+
+  .profile-preview-link {
+    margin-left: auto;
+  }
+}
