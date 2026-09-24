@@ -4,7 +4,60 @@ import PlayerList from "../components/rooms/PlayerList";
 import RoundReveal from "../components/game/RoundReveal";
 import { ANSWER_FIELDS } from "../constants/game";
 import { playGameSound } from "../services/sound";
+import {
+  getAvatar,
+  getLevelFromXp,
+  getProfile,
+  getRoundXp,
+  recordRoundResult,
+} from "../services/profile";
 import socket from "../services/socket";
+
+function getRoundAwards(me, winnerIds, submitSeconds) {
+  if (!me) return [];
+
+  const awards = [];
+
+  if ((me.roundPoints || 0) === ANSWER_FIELDS.length) {
+    awards.push({
+      icon: "🎯",
+      title: "PERFECT ROUND",
+      text: "All 5 categories were correct.",
+    });
+  } else if ((me.roundPoints || 0) >= 4) {
+    awards.push({
+      icon: "🧠",
+      title: "WORD MACHINE",
+      text: "You nailed 4+ categories.",
+    });
+  }
+
+  if ((me.currentStreak || 0) >= 3) {
+    awards.push({
+      icon: "🔥",
+      title: "ON FIRE",
+      text: me.currentStreak + " perfect-round streak.",
+    });
+  }
+
+  if (winnerIds.includes(me.id)) {
+    awards.push({
+      icon: "👑",
+      title: "ROUND WINNER",
+      text: "Highest valid-answer score this round.",
+    });
+  }
+
+  if (submitSeconds != null && submitSeconds <= 20) {
+    awards.push({
+      icon: "⚡",
+      title: "QUICK THINKER",
+      text: "Submitted in " + submitSeconds.toFixed(1) + " seconds.",
+    });
+  }
+
+  return awards;
+}
 
 function RoundResult() {
   const location = useLocation();
@@ -12,8 +65,10 @@ function RoundResult() {
   const resultData = location.state;
 
   useEffect(() => {
-    const handleGameStarted = (gameData) => navigate("/game", { state: gameData });
-    const handleGameOver = (gameData) => navigate("/leaderboard", { state: gameData });
+    const handleGameStarted = (gameData) =>
+      navigate("/game", { state: gameData });
+    const handleGameOver = (gameData) =>
+      navigate("/leaderboard", { state: gameData });
 
     socket.on("gameStarted", handleGameStarted);
     socket.on("gameOver", handleGameOver);
@@ -61,6 +116,45 @@ function RoundResult() {
     resultData.totalRounds != null &&
     resultData.currentRound >= resultData.totalRounds;
 
+  const submitSeconds =
+    me?.submittedAt && resultData.roundStartedAt
+      ? Math.max(0, (me.submittedAt - resultData.roundStartedAt) / 1000)
+      : null;
+
+  const isWinner = Boolean(me && winnerIds.includes(me.id));
+  const roundPoints = me?.roundPoints || 0;
+  const currentStreak = me?.currentStreak || 0;
+  const xpGained = getRoundXp(roundPoints, currentStreak, isWinner);
+  const currentProfile = getProfile();
+  const xpAfterRound = currentProfile.xp + xpGained;
+  const levelAfterRound = getLevelFromXp(xpAfterRound);
+  const awards = getRoundAwards(me, winnerIds, submitSeconds);
+
+  useEffect(() => {
+    if (!me || !resultData.gameId) return;
+
+    recordRoundResult({
+      roundKey:
+        resultData.gameId +
+        ":round:" +
+        resultData.currentRound +
+        ":" +
+        (resultData.roundStartedAt || ""),
+      roundPoints,
+      currentStreak,
+      perfectRound: roundPoints === ANSWER_FIELDS.length,
+      isWinner,
+    });
+  }, [
+    me,
+    resultData.gameId,
+    resultData.currentRound,
+    resultData.roundStartedAt,
+    roundPoints,
+    currentStreak,
+    isWinner,
+  ]);
+
   return (
     <main className="room-container">
       <section className="waiting-card result-card">
@@ -104,6 +198,56 @@ function RoundResult() {
             <div className="my-round-score-total">
               <span>OVERALL</span>
               <strong>{me.score}</strong>
+            </div>
+            <div className="round-xp-pill">
+              <span>XP</span>
+              <strong>+{xpGained}</strong>
+            </div>
+          </div>
+        ) : null}
+
+        {me && awards.length ? (
+          <section className="round-awards">
+            <div className="section-title">
+              <h2>Round awards</h2>
+              <span>{awards.length} earned</span>
+            </div>
+
+            <div className="award-grid">
+              {awards.map((award) => (
+                <article className="award-card" key={award.title}>
+                  <span className="award-icon" aria-hidden="true">{award.icon}</span>
+                  <div>
+                    <strong>{award.title}</strong>
+                    <small>{award.text}</small>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {me ? (
+          <div className="streak-banner">
+            <div className="streak-banner-main">
+              <span>{currentStreak >= 2 ? "🔥" : "✨"}</span>
+              <div>
+                <strong>
+                  {currentStreak
+                    ? currentStreak + " perfect-round streak"
+                    : "Streak reset this round"}
+                </strong>
+                <small>
+                  Best streak: {me.bestStreak || currentStreak || 0}
+                </small>
+              </div>
+            </div>
+            <div className="level-up-copy">
+              <span>LEVEL</span>
+              <strong>{levelAfterRound}</strong>
+              {levelAfterRound > currentProfile.level ? (
+                <em>LEVEL UP!</em>
+              ) : null}
             </div>
           </div>
         ) : null}
