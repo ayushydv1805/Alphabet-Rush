@@ -69,6 +69,7 @@ function makePlayer(socket, name, profile) {
     title: normalizeCosmetic(profile?.title, DEFAULT_TITLE, 28),
     score: 0,
     roundPoints: 0,
+    correctCount: 0,
     currentStreak: 0,
     bestStreak: 0,
     perfectRounds: 0,
@@ -315,6 +316,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
           winnerId: winners[0]?.id || null,
           winnerName: winners[0]?.name || "No winner",
           winningScore: maxScore,
+          gameMode: room.gameMode,
           players: players.map(toPlayerSummary),
         });
 
