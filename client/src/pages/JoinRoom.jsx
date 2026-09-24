@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import socket from "../services/socket";
+import { getAvatar, getProfile, getTitle, updateProfile } from "../services/profile";
 
 function JoinRoom() {
   const navigate = useNavigate();
-  const [playerName, setPlayerName] = useState("");
+  const savedProfile = getProfile();
+  const [playerName, setPlayerName] = useState(savedProfile.name || "");
   const [roomCode, setRoomCode] = useState("");
 
   useEffect(() => {
@@ -36,13 +38,24 @@ function JoinRoom() {
       return;
     }
 
-    socket.emit("joinRoom", { playerName: name, roomCode: code });
+    const profile = updateProfile({ name });
+    const avatar = getAvatar(profile.avatarId);
+    const title = getTitle(profile.titleId);
+
+    socket.emit("joinRoom", {
+      playerName: name,
+      roomCode: code,
+      profile: {
+        avatar: avatar.icon,
+        title: title.name,
+      },
+    });
   };
 
   return (
     <main className="room-container">
       <section className="room-card">
-        <div className="room-icon" aria-hidden="true">👥</div>
+        <div className="room-icon" aria-hidden="true">{getAvatar(savedProfile.avatarId).icon}</div>
         <h1>Join Room</h1>
         <p className="room-subtitle">Enter the room code to join your friends.</p>
 
@@ -69,6 +82,17 @@ function JoinRoom() {
             autoComplete="off"
             spellCheck="false"
           />
+
+          <div className="profile-preview-strip">
+            <span>{getAvatar(savedProfile.avatarId).icon}</span>
+            <div>
+              <strong>{getTitle(savedProfile.titleId).name}</strong>
+              <small>Your profile cosmetics will appear in the match.</small>
+            </div>
+            <button type="button" className="profile-preview-link" onClick={() => navigate("/profile")}>
+              EDIT
+            </button>
+          </div>
 
           <button className="main-room-btn" type="submit">JOIN ROOM</button>
         </form>
