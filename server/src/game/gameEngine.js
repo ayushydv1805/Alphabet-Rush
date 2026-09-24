@@ -29,11 +29,30 @@ function createGameEngine({ io }) {
     return {
       id: player.id,
       name: player.name,
+      avatar: player.avatar,
+      title: player.title,
       score: player.score,
       roundPoints: player.roundPoints || 0,
+      currentStreak: player.currentStreak || 0,
+      bestStreak: player.bestStreak || 0,
+      perfectRounds: player.perfectRounds || 0,
       submitted: player.submitted,
+      submittedAt: player.submittedAt,
       answers: player.answers,
       validation: player.validation,
+    };
+  }
+
+  function toFinalPlayer(player) {
+    return {
+      id: player.id,
+      name: player.name,
+      avatar: player.avatar,
+      title: player.title,
+      score: player.score,
+      currentStreak: player.currentStreak || 0,
+      bestStreak: player.bestStreak || 0,
+      perfectRounds: player.perfectRounds || 0,
     };
   }
 
@@ -49,11 +68,13 @@ function createGameEngine({ io }) {
 
     io.to(roomCode).emit("roundEnded", {
       roomCode,
+      gameId: room.gameId,
       hostId: room.hostId,
       currentRound: room.currentRound,
       totalRounds: room.rounds,
       totalPlayers: room.players.length,
       letter: room.currentLetter,
+      roundStartedAt: room.roundStartedAt,
       endReason,
       winnerIds: room.winnerIds,
       winnerNames: room.winnerNames,
@@ -111,6 +132,7 @@ function createGameEngine({ io }) {
 
     room.currentRound = roundNumber;
     room.currentLetter = getRandomLetter();
+    room.roundStartedAt = Date.now();
     room.winnerId = null;
     room.winnerIds = [];
     room.winnerNames = [];
@@ -129,12 +151,14 @@ function createGameEngine({ io }) {
 
     io.to(roomCode).emit("gameStarted", {
       roomCode,
+      gameId: room.gameId,
       hostId: room.hostId,
       rounds: room.rounds,
       currentRound: room.currentRound,
       totalRounds: room.rounds,
       totalPlayers: room.players.length,
       letter: room.currentLetter,
+      roundStartedAt: room.roundStartedAt,
       timeLimit: ROUND_TIME_LIMIT / 1000,
     });
 
