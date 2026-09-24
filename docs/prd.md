@@ -108,3 +108,15 @@ The current product does not provide user accounts, persistent match history, ra
 ## 9. Success Criteria
 
 A basic multiplayer session is successful when multiple browser clients can join the same room, receive the same letter, submit answers, receive results, continue through the configured rounds and see a final leaderboard.
+
+
+## 11. Progression & Replayability
+
+The product includes a browser-local player progression layer:
+- XP and levels.
+- Lifetime games, rounds, points, wins, perfect rounds and streaks.
+- Unlockable avatars and titles.
+- Round awards.
+- Match completion XP.
+
+Progression is intentionally local to the player's browser in the current prototype and is not a server-backed account system.
