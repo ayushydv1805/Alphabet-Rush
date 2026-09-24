@@ -36,9 +36,22 @@
 - [x] Random-letter utility.
 - [x] Explicit start/dev scripts.
 
-## 2. Current Priorities
+## Phase 2 — Progression & Replayability
+
+Completed:
+- [x] Persistent browser player profile.
+- [x] XP and level progression.
+- [x] Unlockable avatars and titles.
+- [x] Lifetime profile statistics.
+- [x] Round streak tracking.
+- [x] Round awards.
+- [x] Final-match XP reward.
+- [x] Profile/cosmetic data synchronized into multiplayer rooms.
+
+## 3. Current Priorities
 
 ### Reliability
+- [x] Add answer-validator unit tests.
 - [ ] Add game-engine unit tests.
 - [ ] Add Socket.IO integration tests.
 - [ ] Authorize host-only rematch.
@@ -60,7 +73,7 @@
 - [ ] Persist or distribute room state.
 - [ ] Add production authentication.
 
-## 3. Roadmap
+## 4. Roadmap
 
 ~~~mermaid
 flowchart LR
@@ -71,7 +84,7 @@ flowchart LR
     E --> F[Product Expansion]
 ~~~
 
-## 4. Definition of Done
+## 5. Definition of Done
 
 A task is complete when:
 
@@ -84,9 +97,9 @@ A task is complete when:
 - Relevant checks have been run.
 - Documentation is updated when necessary.
 
-## 5. Testing Gap
+## 6. Testing Gap
 
-There is currently no full automated test suite. This is tracked as technical debt.
+The answer validator now has automated unit coverage. Game-engine and Socket.IO integration coverage remain technical debt.
 
 
 ## Phase 2 — Progression & Replayability
