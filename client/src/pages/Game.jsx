@@ -55,11 +55,11 @@ function Game() {
 
   useEffect(() => {
     const handlePlayerSubmitted = (playerData) => {
-      setSubmittedPlayers((previousPlayers) => {
-        if (playerData.playerId === socket.id && playerData.currentStreak != null) {
-          setMyStreak(playerData.currentStreak);
-        }
+      if (playerData.playerId === socket.id && playerData.currentStreak != null) {
+        setMyStreak(playerData.currentStreak);
+      }
 
+      setSubmittedPlayers((previousPlayers) => {
         if (previousPlayers.some((player) => player.playerId === playerData.playerId)) {
           return previousPlayers;
         }
@@ -194,10 +194,11 @@ function Game() {
 
             <div className="timer-wrap">
               <div className={timerClass} aria-live="polite">
-              <span>⏱️ {timeLeft}s</span>
-              {timeLeft <= 10 && timeLeft > 0 && (
-                <small>{timeLeft <= 5 ? "FINAL SECONDS!" : "Hurry!"}</small>
-              )}
+                <span>⏱️ {timeLeft}s</span>
+                {timeLeft <= 10 && timeLeft > 0 && (
+                  <small>{timeLeft <= 5 ? "FINAL SECONDS!" : "Hurry!"}</small>
+                )}
+              </div>
             </div>
           </div>
         </header>
