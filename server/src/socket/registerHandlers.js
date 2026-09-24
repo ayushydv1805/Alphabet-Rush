@@ -116,6 +116,9 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
       socket.emit("roomCreated", {
         roomCode,
         gameId: room.gameId,
+        playerName: player.name,
+        avatar: player.avatar,
+        title: player.title,
         rounds: room.rounds,
         hostId: room.hostId,
         players: room.players.map(toPlayerSummary),
@@ -155,6 +158,9 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
       socket.emit("roomJoined", {
         roomCode: code,
         gameId: room.gameId,
+        playerName: player.name,
+        avatar: player.avatar,
+        title: player.title,
         rounds: room.rounds,
         hostId: room.hostId,
         players: room.players.map(toPlayerSummary),
