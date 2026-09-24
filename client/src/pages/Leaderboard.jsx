@@ -31,6 +31,29 @@ function Leaderboard() {
     playGameSound("winner");
   }, [gameData]);
 
+  const players = [...(gameData?.players || [])].sort(
+    (first, second) => second.score - first.score
+  );
+  const me = players.find((player) => player.id === socket.id);
+  const topScore = players.length ? players[0].score : 0;
+  const winners = players.filter((player) => player.score === topScore);
+  const isHost = Boolean(gameData && gameData.hostId === socket.id);
+  const didWin = Boolean(me && winners.some((player) => player.id === socket.id));
+  const gameXp = didWin ? 100 : 50;
+  const currentProfile = getProfile();
+  const projectedXp = currentProfile.xp + gameXp;
+  const projectedLevel = getLevelFromXp(projectedXp);
+  const avatar = me?.avatar || getAvatar(currentProfile.avatarId).icon;
+
+  useEffect(() => {
+    if (!gameData?.gameId || !me) return;
+
+    recordGameResult({
+      gameKey: gameData.gameId,
+      won: didWin,
+    });
+  }, [gameData?.gameId, me, didWin]);
+
   if (!gameData) {
     return (
       <main className="room-container">
@@ -51,30 +74,6 @@ function Leaderboard() {
       </main>
     );
   }
-
-  const players = [...(gameData.players || [])].sort(
-    (first, second) => second.score - first.score
-  );
-
-  const topScore = players.length ? players[0].score : 0;
-  const winners = players.filter((player) => player.score === topScore);
-  const isHost = gameData.hostId === socket.id;
-  const me = players.find((player) => player.id === socket.id);
-  const didWin = winners.some((player) => player.id === socket.id);
-  const gameXp = didWin ? 100 : 50;
-  const currentProfile = getProfile();
-  const projectedXp = currentProfile.xp + gameXp;
-  const projectedLevel = getLevelFromXp(projectedXp);
-  const avatar = me?.avatar || getAvatar(currentProfile.avatarId).icon;
-
-  useEffect(() => {
-    if (!gameData.gameId || !me) return;
-
-    recordGameResult({
-      gameKey: gameData.gameId,
-      won: didWin,
-    });
-  }, [gameData.gameId, me, didWin]);
 
   return (
     <main className="room-container">
