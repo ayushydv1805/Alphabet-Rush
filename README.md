@@ -566,3 +566,6 @@ Alphabet Rush is a learning, experimentation and multiplayer gameplay project. A
 
 
 > Validation note: answer submissions now perform a deterministic starting-letter check before AI validation and use a safe fallback for known valid answers when the validation service is unavailable.
+
+
+> Deployment check refreshed: latest main-branch build is ready for the connected Vercel project.
