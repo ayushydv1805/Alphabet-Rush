@@ -2,6 +2,12 @@ import { useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import PlayerList from "../components/rooms/PlayerList";
 import { playGameSound } from "../services/sound";
+import {
+  getAvatar,
+  getLevelFromXp,
+  getProfile,
+  recordGameResult,
+} from "../services/profile";
 import socket from "../services/socket";
 
 function Leaderboard() {
@@ -34,7 +40,11 @@ function Leaderboard() {
           <p className="room-subtitle">
             The final results are no longer available.
           </p>
-          <button className="main-room-btn" type="button" onClick={() => navigate("/")}>
+          <button
+            className="main-room-btn"
+            type="button"
+            onClick={() => navigate("/")}
+          >
             BACK TO HOME
           </button>
         </section>
@@ -49,6 +59,22 @@ function Leaderboard() {
   const topScore = players.length ? players[0].score : 0;
   const winners = players.filter((player) => player.score === topScore);
   const isHost = gameData.hostId === socket.id;
+  const me = players.find((player) => player.id === socket.id);
+  const didWin = winners.some((player) => player.id === socket.id);
+  const gameXp = didWin ? 100 : 50;
+  const currentProfile = getProfile();
+  const projectedXp = currentProfile.xp + gameXp;
+  const projectedLevel = getLevelFromXp(projectedXp);
+  const avatar = me?.avatar || getAvatar(currentProfile.avatarId).icon;
+
+  useEffect(() => {
+    if (!gameData.gameId || !me) return;
+
+    recordGameResult({
+      gameKey: gameData.gameId,
+      won: didWin,
+    });
+  }, [gameData.gameId, me, didWin]);
 
   return (
     <main className="room-container">
@@ -77,10 +103,31 @@ function Leaderboard() {
           </div>
         </div>
 
+        {me ? (
+          <section className="final-personal-card">
+            <div className="final-personal-avatar">{avatar}</div>
+            <div className="final-personal-main">
+              <span>YOUR RUN</span>
+              <strong>{me.name}</strong>
+              <small>
+                {me.title || "Rush Rookie"} · {me.score} points ·{" "}
+                {me.perfectRounds || 0} perfect rounds
+              </small>
+            </div>
+            <div className="final-personal-xp">
+              <span>GAME XP</span>
+              <strong>+{gameXp}</strong>
+              <small>Level {projectedLevel}</small>
+            </div>
+          </section>
+        ) : null}
+
         <section className="players-section">
           <div className="section-title">
             <h2>Final Leaderboard</h2>
-            <span>{players.length} player{players.length === 1 ? "" : "s"}</span>
+            <span>
+              {players.length} player{players.length === 1 ? "" : "s"}
+            </span>
           </div>
 
           <PlayerList players={players} showScores showRank />
@@ -103,7 +150,19 @@ function Leaderboard() {
           </div>
         )}
 
-        <button className="leave-btn" type="button" onClick={() => navigate("/")}>
+        <button
+          className="profile-play-btn"
+          type="button"
+          onClick={() => navigate("/profile")}
+        >
+          👤 VIEW PROFILE
+        </button>
+
+        <button
+          className="leave-btn"
+          type="button"
+          onClick={() => navigate("/")}
+        >
           🏠 BACK TO HOME
         </button>
       </section>
