@@ -94,8 +94,14 @@ function RoundResult() {
         ":" +
         (resultData.roundStartedAt || ""),
       roundPoints: me.roundPoints || 0,
+      correctCount:
+        me.correctCount ??
+        Object.values(me.validation || {}).filter(Boolean).length,
       currentStreak: me.currentStreak || 0,
-      perfectRound: (me.roundPoints || 0) === ANSWER_FIELDS.length,
+      perfectRound:
+        (me.correctCount ??
+          Object.values(me.validation || {}).filter(Boolean).length) ===
+        ANSWER_FIELDS.length,
       isWinner: (resultData.winnerIds || []).includes(me.id),
     });
   }, [
@@ -149,7 +155,15 @@ function RoundResult() {
   const isWinner = Boolean(me && winnerIds.includes(me.id));
   const roundPoints = me?.roundPoints || 0;
   const currentStreak = me?.currentStreak || 0;
-  const xpGained = getRoundXp(roundPoints, currentStreak, isWinner);
+  const correctCount =
+    me?.correctCount ??
+    Object.values(me?.validation || {}).filter(Boolean).length;
+  const xpGained = getRoundXp(
+    roundPoints,
+    currentStreak,
+    isWinner,
+    correctCount
+  );
   const currentProfile = getProfile();
   const mode = GAME_MODES.find((item) => item.id === resultData.gameMode) || GAME_MODES[0];
   const xpAfterRound = currentProfile.xp + xpGained;
