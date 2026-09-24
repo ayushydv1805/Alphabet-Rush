@@ -18,6 +18,7 @@ flowchart TB
     Router[React Router]
     UI[Reusable Components]
     Theme[Theme Hook]
+    Profile[Profile + Progression]
     SocketClient[Socket Service]
 
     Server[Node + Express + Socket.IO]
@@ -26,12 +27,14 @@ flowchart TB
     Store[Room Store]
     Validator[AI Validator]
     OpenAI[OpenAI API]
+    Profile[Browser Profile Store]
 
     Browser --> Frontend
     Frontend --> Router
     Frontend --> UI
     Frontend --> Theme
     Frontend --> SocketClient
+    Frontend --> Profile
     SocketClient <--> Server
     Server --> Handlers
     Handlers --> Engine
@@ -89,11 +92,11 @@ Builds the Express and Socket.IO application and composes the game dependencies.
 
 ### server/src/socket/registerHandlers.js
 
-Owns Socket.IO events for room creation, room joining, game start, answer submission, next round, rematch and disconnects.
+Owns Socket.IO events for room creation, room joining, game start, answer submission, next round, rematch and disconnects. It also carries player cosmetics and authoritative per-game streak/perfect-round counters.
 
 ### server/src/game/gameEngine.js
 
-Owns starting rounds, resetting per-round data, timers, ending rounds and broadcasting results.
+Owns starting rounds, resetting per-round data, timers, ending rounds, broadcasting results, and exposing per-player streak/progression fields.
 
 ### server/src/services/answerValidator.js
 
