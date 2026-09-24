@@ -87,3 +87,16 @@ A task is complete when:
 ## 5. Testing Gap
 
 There is currently no full automated test suite. This is tracked as technical debt.
+
+
+## Phase 2 — Progression & Replayability
+
+Completed:
+- Persistent browser player profile.
+- XP and level progression.
+- Unlockable avatars and titles.
+- Lifetime profile statistics.
+- Round streak tracking.
+- Round awards.
+- Final-match XP reward.
+- Profile/cosmetic data synchronized into multiplayer rooms.
