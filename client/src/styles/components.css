@@ -789,3 +789,105 @@ html[data-theme="light"] .round-winner-card {
     margin-left: auto;
   }
 }
+
+
+/* -------------------- Phase 2 / live profile chips -------------------- */
+
+.game-header-tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.game-player-chip {
+  min-height: 48px;
+  padding: 6px 9px 6px 7px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--ar-border);
+  border-radius: 14px;
+  background: var(--ar-input);
+}
+
+.game-player-chip > span {
+  width: 31px;
+  height: 31px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--ar-accent), var(--ar-accent-3));
+  font-size: 17px;
+}
+
+.game-player-chip strong,
+.game-player-chip small {
+  display: block;
+  text-align: left;
+}
+
+.game-player-chip strong {
+  max-width: 90px;
+  overflow: hidden;
+  color: var(--ar-heading);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.game-player-chip small {
+  margin-top: 1px;
+  color: var(--ar-muted);
+  font-size: 7px;
+}
+
+.game-streak-chip {
+  min-height: 36px;
+  padding: 0 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(251, 191, 36, 0.20);
+  border-radius: 11px;
+  background: rgba(251, 191, 36, 0.07);
+  color: var(--ar-warning);
+  font-size: 10px;
+  font-weight: 950;
+  animation: streakChipPulse 1s ease-in-out infinite;
+}
+
+@keyframes streakChipPulse {
+  0%, 100% { box-shadow: 0 0 0 rgba(251, 191, 36, 0); }
+  50% { box-shadow: 0 0 18px rgba(251, 191, 36, 0.11); }
+}
+
+@media (max-width: 760px) {
+  .game-header-tools {
+    flex-wrap: wrap;
+  }
+
+  .game-player-chip {
+    min-height: 42px;
+  }
+
+  .game-player-chip > div {
+    display: none;
+  }
+
+  .game-streak-chip {
+    min-height: 34px;
+  }
+}
+
+@media (max-width: 520px) {
+  .game-player-chip {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-streak-chip {
+    animation: none;
+  }
+}
