@@ -81,14 +81,25 @@ Every round asks for:
 ### 🤖 AI Answer Validation
 
 Each answer is checked for:
-- Category relevance.
-- Required starting letter.
+- Required starting letter on the server.
+- Known, unambiguous answers through deterministic validation.
+- Unknown answers through OpenAI Structured Outputs.
+- A second permissive AI review for first-pass false negatives.
+- Optional web-backed factual confirmation during the second review.
 
 The server first checks the starting letter deterministically, then accepts common unambiguous answers from a trusted built-in dictionary. Answers outside that dictionary go through OpenAI Structured Outputs, with a second permissive review only when the first AI pass rejects an answer. This is designed to reduce false negatives while keeping common answers fast.
 
 ### 🏆 Scoring
 
 Each valid category answer contributes **1 point**, so a player can earn up to **5 points per round**.
+
+
+### 🧬 Player Progression
+- Persistent browser-based player profiles.
+- XP and level progression.
+- Lifetime games, rounds, points, wins, perfect rounds and streak statistics.
+- Unlockable avatars and player titles.
+- Round awards such as Perfect Round, Word Machine, On Fire, Round Winner and Quick Thinker.
 
 ### 🌓 Light / Dark Mode
 - Global theme control in the top-right.
