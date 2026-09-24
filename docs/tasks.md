@@ -101,6 +101,8 @@ A task is complete when:
 
 The answer validator now has automated unit coverage. Game-engine and Socket.IO integration coverage remain technical debt.
 
+Phase 2 progression work is deployed to the current production frontend/backend commits.
+
 
 ## Phase 2 — Progression & Replayability
 
