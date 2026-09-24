@@ -5,7 +5,6 @@ import RoundReveal from "../components/game/RoundReveal";
 import { ANSWER_FIELDS } from "../constants/game";
 import { playGameSound } from "../services/sound";
 import {
-  getAvatar,
   getLevelFromXp,
   getProfile,
   getRoundXp,
@@ -79,6 +78,32 @@ function RoundResult() {
     };
   }, [navigate]);
 
+  const players = resultData?.players || [];
+  const me = players.find((player) => player.id === socket.id);
+
+  useEffect(() => {
+    if (!me || !resultData?.gameId) return;
+
+    recordRoundResult({
+      roundKey:
+        resultData.gameId +
+        ":round:" +
+        resultData.currentRound +
+        ":" +
+        (resultData.roundStartedAt || ""),
+      roundPoints: me.roundPoints || 0,
+      currentStreak: me.currentStreak || 0,
+      perfectRound: (me.roundPoints || 0) === ANSWER_FIELDS.length,
+      isWinner: (resultData.winnerIds || []).includes(me.id),
+    });
+  }, [
+    me,
+    resultData?.gameId,
+    resultData?.currentRound,
+    resultData?.roundStartedAt,
+    resultData?.winnerIds,
+  ]);
+
   if (!resultData) {
     return (
       <main className="room-container">
@@ -100,8 +125,6 @@ function RoundResult() {
     );
   }
 
-  const players = resultData.players || [];
-  const me = players.find((player) => player.id === socket.id);
   const isHost = resultData.hostId === socket.id;
   const winnerIds = resultData.winnerIds || [];
   const winnerNames = resultData.winnerNames || [];
