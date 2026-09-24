@@ -412,7 +412,7 @@ npm start
 npm test
 ~~~
 
-The repository currently has **no automated test suite**. The backend test command is a placeholder.
+The repository includes automated backend tests for answer validation; broader game-engine and Socket.IO integration coverage remains on the roadmap.
 
 ---
 
