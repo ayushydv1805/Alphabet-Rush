@@ -22,7 +22,7 @@ function RoundReveal({ players = [], fields = [], currentPlayerId = "" }) {
           >
             <div className="reveal-player-head">
               <div className="reveal-avatar">
-                {player.name?.charAt(0)?.toUpperCase() || "?"}
+                {player.avatar || player.name?.charAt(0)?.toUpperCase() || "?"}
               </div>
 
               <div>
@@ -31,11 +31,16 @@ function RoundReveal({ players = [], fields = [], currentPlayerId = "" }) {
                   {player.id === currentPlayerId ? " · YOU" : ""}
                 </strong>
                 <span>
-                  +{player.roundPoints || 0} / {fields.length} this round
+                  {player.title || "Rush Rookie"} · +{player.roundPoints || 0} / {fields.length}
                 </span>
               </div>
 
-              <b className="reveal-player-score">{player.score}</b>
+              <div className="reveal-score-group">
+                <b className="reveal-player-score">{player.score}</b>
+                {player.currentStreak >= 2 ? (
+                  <small>🔥 {player.currentStreak}</small>
+                ) : null}
+              </div>
             </div>
 
             <div className="reveal-answers">
@@ -56,7 +61,11 @@ function RoundReveal({ players = [], fields = [], currentPlayerId = "" }) {
                   >
                     <span>{field.label}</span>
                     <strong>{value || "—"}</strong>
-                    <em aria-label={isCorrect ? "Correct" : value ? "Wrong" : "Blank"}>
+                    <em
+                      aria-label={
+                        isCorrect ? "Correct" : value ? "Wrong" : "Blank"
+                      }
+                    >
                       {isCorrect ? "✓" : value ? "✕" : "•"}
                     </em>
                   </div>
