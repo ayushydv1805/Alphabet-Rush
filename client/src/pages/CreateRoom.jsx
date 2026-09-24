@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import socket from "../services/socket";
-import { ROUND_OPTIONS } from "../constants/game";
+import { GAME_MODES, ROUND_OPTIONS } from "../constants/game";
 import { getAvatar, getProfile, getTitle, updateProfile } from "../services/profile";
 
 function CreateRoom() {
@@ -9,6 +9,7 @@ function CreateRoom() {
   const savedProfile = getProfile();
   const [playerName, setPlayerName] = useState(savedProfile.name || "");
   const [rounds, setRounds] = useState(10);
+  const [gameMode, setGameMode] = useState("classic");
 
   const handleCreateRoom = (event) => {
     event.preventDefault();
@@ -30,6 +31,7 @@ function CreateRoom() {
     socket.emit("createRoom", {
       playerName: name,
       rounds,
+      gameMode,
       profile: {
         avatar: avatar.icon,
         title: title.name,
@@ -69,6 +71,23 @@ function CreateRoom() {
                 aria-pressed={rounds === number}
               >
                 {number}
+              </button>
+            ))}
+          </div>
+
+          <label>GAME MODE</label>
+          <div className="game-mode-grid">
+            {GAME_MODES.map((mode) => (
+              <button
+                type="button"
+                key={mode.id}
+                className={gameMode === mode.id ? "game-mode-option selected" : "game-mode-option"}
+                onClick={() => setGameMode(mode.id)}
+                aria-pressed={gameMode === mode.id}
+              >
+                <span className="game-mode-icon" aria-hidden="true">{mode.icon}</span>
+                <span className="game-mode-name">{mode.name}</span>
+                <small>{mode.description}</small>
               </button>
             ))}
           </div>

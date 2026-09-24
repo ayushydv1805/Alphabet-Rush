@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import AnswerField from "../components/game/AnswerField";
 import PlayerSubmissionStatus from "../components/game/PlayerSubmissionStatus";
-import { ANSWER_FIELDS, DEFAULT_TIME_LIMIT } from "../constants/game";
+import { ANSWER_FIELDS, DEFAULT_TIME_LIMIT, GAME_MODES } from "../constants/game";
 import { playGameSound } from "../services/sound";
 import { getAvatar, getProfile } from "../services/profile";
 import socket from "../services/socket";
@@ -21,6 +21,7 @@ function Game() {
   const gameData = location.state;
 
   const totalTime = gameData?.timeLimit || DEFAULT_TIME_LIMIT;
+  const mode = GAME_MODES.find((item) => item.id === gameData?.gameMode) || GAME_MODES[0];
 
   const [timeLeft, setTimeLeft] = useState(totalTime);
   const [answers, setAnswers] = useState(EMPTY_ANSWERS);
@@ -170,7 +171,10 @@ function Game() {
       <section className="game-card">
         <header className="game-header">
           <div>
-            <p className="game-kicker">ALPHABET RUSH</p>
+            <div className="game-kicker-row">
+              <p className="game-kicker">ALPHABET RUSH</p>
+              <span className="mode-pill">{mode.icon} {mode.name}</span>
+            </div>
             <h1>Round {gameData.currentRound}</h1>
             <p>
               Round {gameData.currentRound} of {gameData.totalRounds}
@@ -218,7 +222,7 @@ function Game() {
           <span>YOUR LETTER</span>
           <div className="letter letter-live">{gameData.letter}</div>
           <p className="letter-hint">
-            Every answer must start with {gameData.letter}.
+            Every answer must start with {gameData.letter}.\n            {mode.scoreMultiplier > 1 ? " Every valid answer is worth 2 points." : ""}
           </p>
         </section>
 

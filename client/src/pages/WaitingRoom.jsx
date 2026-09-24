@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import socket from "../services/socket";
 import PlayerList from "../components/rooms/PlayerList";
 import RoomCode from "../components/rooms/RoomCode";
-import { MAX_PLAYERS } from "../constants/game";
+import { GAME_MODES, MAX_PLAYERS } from "../constants/game";
 
 function WaitingRoom() {
   const navigate = useNavigate();
@@ -53,7 +53,15 @@ function WaitingRoom() {
         </section>
 
         <div className="waiting-message">⏳ Waiting for other players to join...</div>
-        <div className="round-info">🎯 {roomData.rounds} Rounds</div>
+        <div className="room-info-grid">
+          <div className="round-info">🎯 {roomData.rounds} Rounds</div>
+          <div className="round-info">
+            {(() => {
+              const mode = GAME_MODES.find((item) => item.id === roomData.gameMode) || GAME_MODES[0];
+              return <>{mode.icon} {mode.name}</>;
+            })()}
+          </div>
+        </div>
 
         <button
           className="start-game-btn"

@@ -891,3 +891,72 @@ html[data-theme="light"] .round-winner-card {
     animation: none;
   }
 }
+
+
+/* -------------------- Phase 3 game modes -------------------- */
+
+.game-mode-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.game-mode-option {
+  min-width: 0;
+  min-height: 96px;
+  padding: 13px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 10px;
+  text-align: left;
+  border: 1px solid var(--ar-border);
+  border-radius: 15px;
+  background: var(--ar-input);
+  color: var(--ar-text);
+  cursor: pointer;
+  transition: transform var(--ar-transition), border-color var(--ar-transition), background var(--ar-transition), box-shadow var(--ar-transition);
+}
+
+.game-mode-option:hover {
+  transform: translateY(-2px);
+  border-color: var(--ar-border-strong);
+}
+
+.game-mode-option.selected {
+  border-color: rgba(129, 140, 248, 0.5);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), var(--ar-input));
+  box-shadow: 0 12px 25px rgba(99, 102, 241, 0.08);
+}
+
+.game-mode-icon {
+  grid-row: 1 / 3;
+  font-size: 24px;
+}
+
+.game-mode-name {
+  color: var(--ar-heading);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.game-mode-option small {
+  margin-top: 2px;
+  color: var(--ar-muted);
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+.room-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+@media (max-width: 580px) {
+  .game-mode-grid,
+  .room-info-grid {
+    grid-template-columns: 1fr;
+  }
+}

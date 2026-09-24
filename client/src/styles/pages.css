@@ -1682,3 +1682,42 @@
     animation: none;
   }
 }
+
+
+/* -------------------- Phase 3 game modes -------------------- */
+
+.game-kicker-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mode-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 4px 8px;
+  border: 1px solid rgba(129, 140, 248, 0.2);
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.08);
+  color: var(--ar-accent);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.room-info-grid .round-info {
+  margin-top: 15px;
+  padding: 9px 11px;
+  border: 1px solid var(--ar-border);
+  border-radius: 12px;
+  background: var(--ar-input);
+}
+
+@media (max-width: 760px) {
+  .game-kicker-row {
+    gap: 6px;
+  }
+}

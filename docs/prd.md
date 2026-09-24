@@ -53,10 +53,14 @@ flowchart TD
 ### Game Management
 
 - Current frontend offers 5, 10, 15 and 20 rounds.
-- Random uppercase letter per round.
-- 60-second server-side round timer.
-- Per-round submission state reset.
-- Round results broadcast to the room.
+- Host selects a game mode: Classic, Blitz, Double Points or Hard Letters.
+- Classic uses a 60-second timer and standard scoring.
+- Blitz uses a 30-second timer.
+- Double Points uses a 60-second timer and doubles points for valid answers.
+- Hard Letters chooses from J, Q, V, W, X, Y and Z.
+- Timer, mode and scoring rules are authoritative on the server.
+- Per-round submission state resets before every round.
+- Round results broadcast the selected mode and score multiplier.
 
 ### Answer Validation
 

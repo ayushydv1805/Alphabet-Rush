@@ -48,6 +48,18 @@ Completed:
 - [x] Final-match XP reward.
 - [x] Profile/cosmetic data synchronized into multiplayer rooms.
 
+## Phase 3 — Game Modes & Variety
+
+Completed:
+- [x] Classic mode.
+- [x] Blitz 30-second mode.
+- [x] Double Points mode.
+- [x] Hard Letters mode.
+- [x] Host selects the mode when creating a room.
+- [x] Server-authoritative timer, scoring multiplier and letter pool.
+- [x] Mode displayed in lobby, gameplay and round results.
+- [x] Automated game-mode tests.
+
 ## 3. Current Priorities
 
 ### Reliability

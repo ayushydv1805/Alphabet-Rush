@@ -1,5 +1,5 @@
 const { getRoom } = require("../store/rooms");
-const { getRandomLetter } = require("../utils/randomLetter");
+const { getGameModeConfig, getRoundLetter } = require("./gameModes");
 
 const ROUND_TIME_LIMIT = 60_000;
 
@@ -33,6 +33,7 @@ function createGameEngine({ io }) {
       title: player.title,
       score: player.score,
       roundPoints: player.roundPoints || 0,
+      correctCount: player.correctCount || 0,
       currentStreak: player.currentStreak || 0,
       bestStreak: player.bestStreak || 0,
       perfectRounds: player.perfectRounds || 0,
@@ -73,7 +74,13 @@ function createGameEngine({ io }) {
       currentRound: room.currentRound,
       totalRounds: room.rounds,
       totalPlayers: room.players.length,
+      gameMode: room.gameMode,
+      modeName: mode.name,
+      modeIcon: mode.icon,
+      scoreMultiplier: mode.scoreMultiplier,
       letter: room.currentLetter,
+      gameMode: room.gameMode,
+      roundMode: getGameModeConfig(room.gameMode),
       roundStartedAt: room.roundStartedAt,
       endReason,
       winnerIds: room.winnerIds,
@@ -131,7 +138,8 @@ function createGameEngine({ io }) {
     }
 
     room.currentRound = roundNumber;
-    room.currentLetter = getRandomLetter();
+    const mode = getGameModeConfig(room.gameMode);
+    room.currentLetter = getRoundLetter(room.gameMode);
     room.roundStartedAt = Date.now();
     room.winnerId = null;
     room.winnerIds = [];
@@ -147,6 +155,7 @@ function createGameEngine({ io }) {
       player.submitted = false;
       player.allCorrect = false;
       player.roundPoints = 0;
+      player.correctCount = 0;
     });
 
     io.to(roomCode).emit("gameStarted", {
@@ -159,14 +168,14 @@ function createGameEngine({ io }) {
       totalPlayers: room.players.length,
       letter: room.currentLetter,
       roundStartedAt: room.roundStartedAt,
-      timeLimit: ROUND_TIME_LIMIT / 1000,
+      timeLimit: mode.timeLimit / 1000,
     });
 
     room.roundTimer = setTimeout(() => {
       if (getRoom(roomCode)) {
         markRoundExpired(roomCode);
       }
-    }, ROUND_TIME_LIMIT);
+    }, mode.timeLimit);
   }
 
   return {

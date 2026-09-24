@@ -94,6 +94,14 @@ The server first checks the starting letter deterministically, then accepts comm
 Each valid category answer contributes **1 point**, so a player can earn up to **5 points per round**.
 
 
+### 🎮 Game Modes
+- 🎯 **Classic** — 60 seconds, standard scoring.
+- ⚡ **Blitz** — 30 seconds, built around speed.
+- 💎 **Double Points** — 60 seconds, every valid category is worth 2 points.
+- 🔥 **Hard Letters** — 60 seconds using J, Q, V, W, X, Y or Z.
+
+The host selects the mode while creating the room. The server remains authoritative over the timer, letter pool and scoring multiplier.
+
 ### 🧬 Player Progression
 - Persistent browser-based player profiles.
 - XP and level progression.
@@ -128,6 +136,7 @@ flowchart TD
     W --> H[Socket Event Handlers]
     H --> G[Game Engine]
     G --> M[In-Memory Room Store]
+    G --> GM[Game Mode Rules]
     G --> V[Answer Validator]
     V --> O[OpenAI API]
 ~~~
@@ -143,7 +152,8 @@ flowchart TD
 | Constants | Shared game configuration |
 | Styles | Theme tokens, layout, components and page styling |
 | Socket handlers | Realtime event orchestration |
-| Game engine | Round lifecycle and timers |
+| Game engine | Round lifecycle, timers and scoring flow |
+| Game mode rules | Mode timers, letter pools and score multipliers |
 | Room store | Active room state |
 | Validator | OpenAI-backed answer validation |
 

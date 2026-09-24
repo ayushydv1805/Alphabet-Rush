@@ -1,6 +1,7 @@
 const crypto = require("node:crypto");
 const { createUniqueRoomCode } = require("../utils/roomCode");
 const { getRoom, createRoom, deleteRoom, rooms } = require("../store/rooms");
+const { getGameModeConfig } = require("../game/gameModes");
 
 const MAX_PLAYERS = 10;
 const ALLOWED_ROUNDS = [5, 10, 15, 20];
@@ -44,6 +45,10 @@ function normalizeCosmetic(value, fallback, maxLength) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) || fallback : fallback;
 }
 
+function normalizeGameMode(value) {
+  return getGameModeConfig(typeof value === "string" ? value.trim().toLowerCase() : "").id;
+}
+
 function normalizeAnswers(value) {
   const source = value && typeof value === "object" ? value : {};
 
@@ -79,7 +84,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
   io.on("connection", (socket) => {
     console.log("Player connected:", socket.id);
 
-    socket.on("createRoom", ({ playerName, rounds, profile }) => {
+    socket.on("createRoom", ({ playerName, rounds, gameMode, profile }) => {
       const name = normalizeName(playerName);
 
       if (!name) {
@@ -91,6 +96,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
       const selectedRounds = ALLOWED_ROUNDS.includes(Number(rounds))
         ? Number(rounds)
         : 10;
+      const selectedMode = normalizeGameMode(gameMode);
 
       const player = makePlayer(socket, name, profile);
 
@@ -98,6 +104,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
         gameId: crypto.randomUUID(),
         hostId: socket.id,
         rounds: selectedRounds,
+        gameMode: selectedMode,
         currentRound: 0,
         currentLetter: null,
         roundStartedAt: null,
@@ -120,6 +127,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
         avatar: player.avatar,
         title: player.title,
         rounds: room.rounds,
+        gameMode: room.gameMode,
         hostId: room.hostId,
         players: room.players.map(toPlayerSummary),
       });
@@ -170,6 +178,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
         roomCode: code,
         gameId: room.gameId,
         rounds: room.rounds,
+        gameMode: room.gameMode,
         hostId: room.hostId,
         players: room.players.map(toPlayerSummary),
       });
@@ -237,13 +246,15 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
       currentPlayer.validation = validation;
 
       const values = Object.values(validation);
-      currentPlayer.roundPoints = values.filter(Boolean).length;
-      currentPlayer.allCorrect =
-        currentPlayer.roundPoints === 5;
+      const correctCount = values.filter(Boolean).length;
+      const mode = getGameModeConfig(currentRoom.gameMode);
+      currentPlayer.correctCount = correctCount;
+      currentPlayer.roundPoints = correctCount * mode.scoreMultiplier;
+      currentPlayer.allCorrect = correctCount === 5;
 
       currentPlayer.score += currentPlayer.roundPoints;
 
-      if (currentPlayer.roundPoints === 5) {
+      if (correctCount === 5) {
         currentPlayer.currentStreak += 1;
         currentPlayer.bestStreak = Math.max(
           currentPlayer.bestStreak,
@@ -258,6 +269,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
         playerId: currentPlayer.id,
         playerName: currentPlayer.name,
         roundPoints: currentPlayer.roundPoints,
+        correctCount,
         submittedCount: currentRoom.players.filter((item) => item.submitted).length,
         totalPlayers: currentRoom.players.length,
         currentStreak: currentPlayer.currentStreak,
@@ -352,6 +364,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
           roomCode,
           gameId: room.gameId,
           rounds: room.rounds,
+          gameMode: room.gameMode,
           hostId: room.hostId,
           players: room.players.map(toPlayerSummary),
         });

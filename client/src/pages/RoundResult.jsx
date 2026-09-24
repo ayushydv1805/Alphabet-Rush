@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import PlayerList from "../components/rooms/PlayerList";
 import RoundReveal from "../components/game/RoundReveal";
-import { ANSWER_FIELDS } from "../constants/game";
+import { ANSWER_FIELDS, GAME_MODES } from "../constants/game";
 import { playGameSound } from "../services/sound";
 import {
   getLevelFromXp,
@@ -17,13 +17,15 @@ function getRoundAwards(me, winnerIds, submitSeconds) {
 
   const awards = [];
 
-  if ((me.roundPoints || 0) === ANSWER_FIELDS.length) {
+  const correctCount = me.correctCount ?? Object.values(me.validation || {}).filter(Boolean).length;
+
+  if (correctCount === ANSWER_FIELDS.length) {
     awards.push({
       icon: "🎯",
       title: "PERFECT ROUND",
       text: "All 5 categories were correct.",
     });
-  } else if ((me.roundPoints || 0) >= 4) {
+  } else if (correctCount >= 4) {
     awards.push({
       icon: "🧠",
       title: "WORD MACHINE",
@@ -149,6 +151,7 @@ function RoundResult() {
   const currentStreak = me?.currentStreak || 0;
   const xpGained = getRoundXp(roundPoints, currentStreak, isWinner);
   const currentProfile = getProfile();
+  const mode = GAME_MODES.find((item) => item.id === resultData.gameMode) || GAME_MODES[0];
   const xpAfterRound = currentProfile.xp + xpGained;
   const levelAfterRound = getLevelFromXp(xpAfterRound);
   const awards = getRoundAwards(me, winnerIds, submitSeconds);
@@ -161,7 +164,7 @@ function RoundResult() {
           <p className="home-eyebrow">ROUND COMPLETE</p>
           <h1>Round {resultData.currentRound} Results</h1>
           <p className="room-subtitle">
-            Letter <strong>{resultData.letter}</strong>
+            {mode.icon} {mode.name} · Letter <strong>{resultData.letter}</strong>
             {resultData.endReason === "time-up"
               ? " · Time's up"
               : " · Everyone submitted"}
@@ -255,7 +258,7 @@ function RoundResult() {
             <div className="section-title">
               <h2>Your answers</h2>
               <span>
-                {me.roundPoints} / {ANSWER_FIELDS.length} correct
+                {me.correctCount ?? Object.values(me.validation || {}).filter(Boolean).length} / {ANSWER_FIELDS.length} correct · +{me.roundPoints || 0} points
               </span>
             </div>
 
