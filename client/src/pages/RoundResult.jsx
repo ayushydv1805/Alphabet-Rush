@@ -153,31 +153,6 @@ function RoundResult() {
   const levelAfterRound = getLevelFromXp(xpAfterRound);
   const awards = getRoundAwards(me, winnerIds, submitSeconds);
 
-  useEffect(() => {
-    if (!me || !resultData.gameId) return;
-
-    recordRoundResult({
-      roundKey:
-        resultData.gameId +
-        ":round:" +
-        resultData.currentRound +
-        ":" +
-        (resultData.roundStartedAt || ""),
-      roundPoints,
-      currentStreak,
-      perfectRound: roundPoints === ANSWER_FIELDS.length,
-      isWinner,
-    });
-  }, [
-    me,
-    resultData.gameId,
-    resultData.currentRound,
-    resultData.roundStartedAt,
-    roundPoints,
-    currentStreak,
-    isWinner,
-  ]);
-
   return (
     <main className="room-container">
       <section className="waiting-card result-card">
