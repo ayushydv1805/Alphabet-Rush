@@ -18,9 +18,11 @@ function PlayerList({
             key={player.id}
           >
             <div className="player-avatar">
-              {showRank
-                ? index + 1
-                : player.name?.charAt(0)?.toUpperCase() || "?"}
+              {showRank ? (
+                index + 1
+              ) : (
+                player.avatar || player.name?.charAt(0)?.toUpperCase() || "?"
+              )}
             </div>
 
             <div className="player-info">
@@ -34,15 +36,16 @@ function PlayerList({
                       ? player.score + " " + scoreLabel
                       : showHost && index === 0
                         ? "Host"
-                        : "Player"}
+                        : player.title || "Player"}
               </small>
+              {player.currentStreak >= 2 ? (
+                <span className="player-streak">🔥 {player.currentStreak} streak</span>
+              ) : null}
             </div>
 
             {showRoundPoints ? (
               <div className="score-stack">
-                <span className="round-score">
-                  +{player.roundPoints || 0}
-                </span>
+                <span className="round-score">+{player.roundPoints || 0}</span>
                 <strong>{player.score}</strong>
                 {isWinner && <span className="winner-chip">WINNER</span>}
               </div>
