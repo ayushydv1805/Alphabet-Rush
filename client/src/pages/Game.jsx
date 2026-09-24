@@ -4,6 +4,7 @@ import AnswerField from "../components/game/AnswerField";
 import PlayerSubmissionStatus from "../components/game/PlayerSubmissionStatus";
 import { ANSWER_FIELDS, DEFAULT_TIME_LIMIT } from "../constants/game";
 import { playGameSound } from "../services/sound";
+import { getAvatar, getProfile } from "../services/profile";
 import socket from "../services/socket";
 
 const EMPTY_ANSWERS = {
@@ -25,6 +26,7 @@ function Game() {
   const [answers, setAnswers] = useState(EMPTY_ANSWERS);
   const [submitted, setSubmitted] = useState(false);
   const [submittedPlayers, setSubmittedPlayers] = useState([]);
+  const [myStreak, setMyStreak] = useState(getProfile().currentStreak);
 
   useEffect(() => {
     if (!gameData || submitted || timeLeft <= 0) return undefined;
@@ -54,6 +56,10 @@ function Game() {
   useEffect(() => {
     const handlePlayerSubmitted = (playerData) => {
       setSubmittedPlayers((previousPlayers) => {
+        if (playerData.playerId === socket.id && playerData.currentStreak != null) {
+          setMyStreak(playerData.currentStreak);
+        }
+
         if (previousPlayers.some((player) => player.playerId === playerData.playerId)) {
           return previousPlayers;
         }
@@ -171,8 +177,23 @@ function Game() {
             </p>
           </div>
 
-          <div className="timer-wrap">
-            <div className={timerClass} aria-live="polite">
+          <div className="game-header-tools">
+            <div className="game-player-chip">
+              <span>{gameData.avatar || getAvatar(getProfile().avatarId).icon}</span>
+              <div>
+                <strong>{gameData.playerName || "Player"}</strong>
+                <small>Lv. {getProfile().level}</small>
+              </div>
+            </div>
+
+            {myStreak >= 2 ? (
+              <div className="game-streak-chip">
+                🔥 {myStreak}
+              </div>
+            ) : null}
+
+            <div className="timer-wrap">
+              <div className={timerClass} aria-live="polite">
               <span>⏱️ {timeLeft}s</span>
               {timeLeft <= 10 && timeLeft > 0 && (
                 <small>{timeLeft <= 5 ? "FINAL SECONDS!" : "Hurry!"}</small>
