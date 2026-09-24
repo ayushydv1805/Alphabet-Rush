@@ -1,19 +1,33 @@
+const crypto = require("node:crypto");
 const { createUniqueRoomCode } = require("../utils/roomCode");
 const { getRoom, createRoom, deleteRoom, rooms } = require("../store/rooms");
 
 const MAX_PLAYERS = 10;
 const ALLOWED_ROUNDS = [5, 10, 15, 20];
+const DEFAULT_AVATAR = "⚡";
+const DEFAULT_TITLE = "Rush Rookie";
 
 function toPlayerSummary(player) {
   return {
     id: player.id,
     name: player.name,
+    avatar: player.avatar || DEFAULT_AVATAR,
+    title: player.title || DEFAULT_TITLE,
     score: player.score,
+    currentStreak: player.currentStreak || 0,
+    bestStreak: player.bestStreak || 0,
+    perfectRounds: player.perfectRounds || 0,
   };
 }
 
 function resetPlayerRound(player, resetScore = false) {
-  if (resetScore) player.score = 0;
+  if (resetScore) {
+    player.score = 0;
+    player.currentStreak = 0;
+    player.bestStreak = 0;
+    player.perfectRounds = 0;
+  }
+
   player.answers = {};
   player.validation = {};
   player.submittedAt = null;
@@ -24,6 +38,10 @@ function resetPlayerRound(player, resetScore = false) {
 
 function normalizeName(value) {
   return typeof value === "string" ? value.trim().slice(0, 20) : "";
+}
+
+function normalizeCosmetic(value, fallback, maxLength) {
+  return typeof value === "string" ? value.trim().slice(0, maxLength) || fallback : fallback;
 }
 
 function normalizeAnswers(value) {
@@ -38,11 +56,30 @@ function normalizeAnswers(value) {
   };
 }
 
+function makePlayer(socket, name, profile) {
+  return {
+    id: socket.id,
+    name,
+    avatar: normalizeCosmetic(profile?.avatar, DEFAULT_AVATAR, 12),
+    title: normalizeCosmetic(profile?.title, DEFAULT_TITLE, 28),
+    score: 0,
+    roundPoints: 0,
+    currentStreak: 0,
+    bestStreak: 0,
+    perfectRounds: 0,
+    answers: {},
+    validation: {},
+    submittedAt: null,
+    submitted: false,
+    allCorrect: false,
+  };
+}
+
 function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
   io.on("connection", (socket) => {
     console.log("Player connected:", socket.id);
 
-    socket.on("createRoom", ({ playerName, rounds }) => {
+    socket.on("createRoom", ({ playerName, rounds, profile }) => {
       const name = normalizeName(playerName);
 
       if (!name) {
@@ -55,11 +92,15 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
         ? Number(rounds)
         : 10;
 
+      const player = makePlayer(socket, name, profile);
+
       const room = createRoom(roomCode, {
+        gameId: crypto.randomUUID(),
         hostId: socket.id,
         rounds: selectedRounds,
         currentRound: 0,
         currentLetter: null,
+        roundStartedAt: null,
         winnerId: null,
         winnerIds: [],
         winnerNames: [],
@@ -67,32 +108,21 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
         roundExpired: false,
         pendingValidations: 0,
         roundTimer: null,
-        players: [
-          {
-            id: socket.id,
-            name,
-            score: 0,
-            roundPoints: 0,
-            answers: {},
-            validation: {},
-            submittedAt: null,
-            submitted: false,
-            allCorrect: false,
-          },
-        ],
+        players: [player],
       });
 
       socket.join(roomCode);
 
       socket.emit("roomCreated", {
         roomCode,
+        gameId: room.gameId,
         rounds: room.rounds,
         hostId: room.hostId,
         players: room.players.map(toPlayerSummary),
       });
     });
 
-    socket.on("joinRoom", ({ roomCode, playerName }) => {
+    socket.on("joinRoom", ({ roomCode, playerName, profile }) => {
       const code =
         typeof roomCode === "string" ? roomCode.trim().toUpperCase() : "";
       const name = normalizeName(playerName);
@@ -118,23 +148,13 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
         return;
       }
 
-      const player = {
-        id: socket.id,
-        name,
-        score: 0,
-        roundPoints: 0,
-        answers: {},
-        validation: {},
-        submittedAt: null,
-        submitted: false,
-        allCorrect: false,
-      };
-
+      const player = makePlayer(socket, name, profile);
       room.players.push(player);
       socket.join(code);
 
       socket.emit("roomJoined", {
         roomCode: code,
+        gameId: room.gameId,
         rounds: room.rounds,
         hostId: room.hostId,
         players: room.players.map(toPlayerSummary),
@@ -142,6 +162,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
 
       io.to(code).emit("roomUpdated", {
         roomCode: code,
+        gameId: room.gameId,
         rounds: room.rounds,
         hostId: room.hostId,
         players: room.players.map(toPlayerSummary),
@@ -157,7 +178,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
       startRound(roomCode, 1);
     });
 
-    socket.on("submitAnswers", async ({ roomCode, answers, submittedAt }) => {
+    socket.on("submitAnswers", async ({ roomCode, answers }) => {
       const room = getRoom(roomCode);
       if (!room || room.roundEnded || room.roundExpired) return;
 
@@ -169,12 +190,22 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
 
       player.submitted = true;
       player.answers = safeAnswers;
-      player.submittedAt = submittedAt || Date.now();
+      player.submittedAt = Date.now();
       room.pendingValidations += 1;
 
       let validation;
+
       try {
         validation = await validateAnswers(safeAnswers, letter);
+      } catch (error) {
+        console.error("Unexpected answer validator error:", error.message);
+        validation = {
+          name: false,
+          place: false,
+          thing: false,
+          animal: false,
+          food: false,
+        };
       } finally {
         room.pendingValidations = Math.max(0, room.pendingValidations - 1);
       }
@@ -201,8 +232,21 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
 
       const values = Object.values(validation);
       currentPlayer.roundPoints = values.filter(Boolean).length;
-      currentPlayer.allCorrect = currentPlayer.roundPoints === values.length;
+      currentPlayer.allCorrect =
+        currentPlayer.roundPoints === 5;
+
       currentPlayer.score += currentPlayer.roundPoints;
+
+      if (currentPlayer.roundPoints === 5) {
+        currentPlayer.currentStreak += 1;
+        currentPlayer.bestStreak = Math.max(
+          currentPlayer.bestStreak,
+          currentPlayer.currentStreak
+        );
+        currentPlayer.perfectRounds += 1;
+      } else {
+        currentPlayer.currentStreak = 0;
+      }
 
       io.to(roomCode).emit("playerSubmitted", {
         playerId: currentPlayer.id,
@@ -210,6 +254,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
         roundPoints: currentPlayer.roundPoints,
         submittedCount: currentRoom.players.filter((item) => item.submitted).length,
         totalPlayers: currentRoom.players.length,
+        currentStreak: currentPlayer.currentStreak,
       });
 
       const everyoneSubmitted =
@@ -244,6 +289,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
 
         io.to(roomCode).emit("gameOver", {
           roomCode,
+          gameId: room.gameId,
           hostId: room.hostId,
           totalRounds: room.rounds,
           winnerIds: winners.map((player) => player.id),
@@ -266,6 +312,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
       if (!room || room.hostId !== socket.id || !room.roundEnded) return;
 
       room.currentRound = 0;
+      room.gameId = crypto.randomUUID();
       room.winnerId = null;
       room.winnerIds = [];
       room.winnerNames = [];
@@ -297,6 +344,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
 
         io.to(roomCode).emit("roomUpdated", {
           roomCode,
+          gameId: room.gameId,
           rounds: room.rounds,
           hostId: room.hostId,
           players: room.players.map(toPlayerSummary),
