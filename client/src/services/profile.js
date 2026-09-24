@@ -123,10 +123,17 @@ export function isTitleUnlocked(title, level) {
   return level >= title.unlockLevel;
 }
 
-export function getRoundXp(roundPoints, currentStreak, isWinner) {
-  let xp = Math.max(0, Number(roundPoints) || 0) * 10;
+export function getRoundXp(
+  roundPoints,
+  currentStreak,
+  isWinner,
+  correctCount = roundPoints
+) {
+  const points = Math.max(0, Number(roundPoints) || 0);
+  const correct = Math.max(0, Number(correctCount) || 0);
+  let xp = points * 10;
 
-  if (roundPoints === 5) xp += 20;
+  if (correct === 5) xp += 20;
   if (isWinner) xp += 15;
   if (currentStreak >= 3) xp += 10;
 
@@ -139,6 +146,7 @@ export function recordRoundResult({
   currentStreak,
   perfectRound,
   isWinner,
+  correctCount = roundPoints,
 }) {
   const profile = getProfile();
 
@@ -148,7 +156,12 @@ export function recordRoundResult({
 
   const points = Math.max(0, Number(roundPoints) || 0);
   const streak = Math.max(0, Number(currentStreak) || 0);
-  const xpGained = getRoundXp(points, streak, Boolean(isWinner));
+  const xpGained = getRoundXp(
+    points,
+    streak,
+    Boolean(isWinner),
+    correctCount
+  );
 
   const nextProfile = {
     ...profile,
