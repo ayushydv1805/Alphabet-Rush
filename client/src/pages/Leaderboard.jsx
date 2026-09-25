@@ -138,7 +138,10 @@ function Leaderboard() {
             type="button"
             onClick={() => {
               playGameSound("nextRound");
-              socket.emit("rematch", { roomCode: gameData.roomCode });
+              socket.emit("rematch", {
+                roomCode: gameData.roomCode,
+                gameId: gameData.gameId,
+              });
             }}
           >
             🔄 PLAY AGAIN

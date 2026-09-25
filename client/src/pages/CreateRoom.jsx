@@ -10,13 +10,14 @@ function CreateRoom() {
   const [playerName, setPlayerName] = useState(savedProfile.name || "");
   const [rounds, setRounds] = useState(10);
   const [gameMode, setGameMode] = useState("classic");
+  const [error, setError] = useState("");
 
   const handleCreateRoom = (event) => {
     event.preventDefault();
     const name = playerName.trim();
 
     if (!name) {
-      alert("Please enter your name");
+      setError("Please enter your name.");
       return;
     }
 
@@ -24,9 +25,20 @@ function CreateRoom() {
     const avatar = getAvatar(profile.avatarId);
     const title = getTitle(profile.titleId);
 
-    socket.once("roomCreated", (roomData) => {
+    setError("");
+
+    const handleRoomCreated = (roomData) => {
+      socket.off("createError", handleCreateError);
       navigate("/waiting-room", { state: roomData });
-    });
+    };
+
+    const handleCreateError = (message) => {
+      setError(message || "Could not create the room.");
+      socket.off("roomCreated", handleRoomCreated);
+    };
+
+    socket.once("roomCreated", handleRoomCreated);
+    socket.once("createError", handleCreateError);
 
     socket.emit("createRoom", {
       playerName: name,
@@ -47,6 +59,7 @@ function CreateRoom() {
         <p className="room-subtitle">
           Create a room and invite your friends.
         </p>
+        {error ? <div className="form-error" role="alert">⚠️ {error}</div> : null}
 
         <form onSubmit={handleCreateRoom}>
           <label htmlFor="player-name">YOUR NAME</label>

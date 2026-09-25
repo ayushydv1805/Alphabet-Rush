@@ -28,6 +28,7 @@ function Game() {
   const [submitted, setSubmitted] = useState(false);
   const [submittedPlayers, setSubmittedPlayers] = useState([]);
   const [myStreak, setMyStreak] = useState(getProfile().currentStreak);
+  const [validating, setValidating] = useState(false);
 
   useEffect(() => {
     if (!gameData || submitted || timeLeft <= 0) return undefined;
@@ -53,6 +54,24 @@ function Game() {
     if (!gameData || submitted || timeLeft !== 0) return;
     playGameSound("timeup");
   }, [gameData, submitted, timeLeft]);
+
+  useEffect(() => {
+    const handleSubmissionValidated = (payload) => {
+      if (payload?.roundId === gameData?.roundId) {
+        setValidating(false);
+      }
+    };
+
+    const handleActionError = () => setValidating(false);
+
+    socket.on("submissionValidated", handleSubmissionValidated);
+    socket.on("actionError", handleActionError);
+
+    return () => {
+      socket.off("submissionValidated", handleSubmissionValidated);
+      socket.off("actionError", handleActionError);
+    };
+  }, [gameData?.roundId]);
 
   useEffect(() => {
     const handlePlayerSubmitted = (playerData) => {
@@ -234,7 +253,7 @@ function Game() {
 
         {submitted ? (
           <div className="waiting-message game-waiting-state submission-feedback">
-            <strong>✅ Answers locked</strong>
+            <strong>{validating ? "🤖 Verifying answers..." : "✅ Answers locked"}</strong>
             <span>
               Waiting for the other players or the timer to finish the round.
             </span>
@@ -259,8 +278,10 @@ function Game() {
           onClick={handleSubmit}
           disabled={submitted || timeLeft <= 0}
         >
-          {submitted
-            ? "✓ ANSWERS LOCKED"
+          {validating
+            ? "🤖 VERIFYING ANSWERS..."
+            : submitted
+              ? "✓ ANSWERS LOCKED"
             : timeLeft <= 0
               ? "TIME'S UP"
               : "SUBMIT ANSWERS"}

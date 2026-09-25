@@ -342,7 +342,11 @@ function RoundResult() {
               type="button"
               onClick={() => {
                 playGameSound("nextRound");
-                socket.emit("nextRound", { roomCode: resultData.roomCode });
+                socket.emit("nextRound", {
+                  roomCode: resultData.roomCode,
+                  roundId: resultData.roundId,
+                  gameId: resultData.gameId,
+                });
               }}
             >
               {isLastRound ? "🏆 FINISH GAME" : "NEXT ROUND →"}

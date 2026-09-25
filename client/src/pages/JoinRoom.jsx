@@ -8,10 +8,14 @@ function JoinRoom() {
   const savedProfile = getProfile();
   const [playerName, setPlayerName] = useState(savedProfile.name || "");
   const [roomCode, setRoomCode] = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    const handleRoomJoined = (roomData) => navigate("/waiting-room", { state: roomData });
-    const handleJoinError = (message) => alert(message);
+    const handleRoomJoined = (roomData) => {
+      setError("");
+      navigate("/waiting-room", { state: roomData });
+    };
+    const handleJoinError = (message) => setError(message || "Could not join the room.");
 
     socket.on("roomJoined", handleRoomJoined);
     socket.on("joinError", handleJoinError);
@@ -29,14 +33,16 @@ function JoinRoom() {
     const code = roomCode.trim().toUpperCase();
 
     if (!name) {
-      alert("Please enter your name");
+      setError("Please enter your name.");
       return;
     }
 
     if (!code) {
-      alert("Please enter room code");
+      setError("Please enter room code.");
       return;
     }
+
+    setError("");
 
     const profile = updateProfile({ name });
     const avatar = getAvatar(profile.avatarId);
@@ -58,6 +64,7 @@ function JoinRoom() {
         <div className="room-icon" aria-hidden="true">{getAvatar(savedProfile.avatarId).icon}</div>
         <h1>Join Room</h1>
         <p className="room-subtitle">Enter the room code to join your friends.</p>
+        {error ? <div className="form-error" role="alert">⚠️ {error}</div> : null}
 
         <form onSubmit={handleJoinRoom}>
           <label htmlFor="join-player-name">YOUR NAME</label>
