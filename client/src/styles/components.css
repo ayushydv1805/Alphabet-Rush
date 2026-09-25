@@ -1025,3 +1025,34 @@ html[data-theme="light"] .round-winner-card {
     animation: none;
   }
 }
+
+
+/* -------------------- Realtime connection status -------------------- */
+.connection-status {
+  position: fixed;
+  top: 22px;
+  left: 24px;
+  z-index: 1000;
+  min-height: 38px;
+  padding: 0 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--ar-border);
+  border-radius: 999px;
+  background: var(--ar-surface);
+  color: var(--ar-muted);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  box-shadow: 0 12px 30px var(--ar-shadow);
+  backdrop-filter: blur(18px);
+}
+
+.connection-status.connected { border-color: rgba(52, 211, 153, 0.22); color: var(--ar-success); }
+.connection-status.reconnecting { border-color: rgba(251, 191, 36, 0.22); color: var(--ar-warning); }
+.connection-status.disconnected { border-color: rgba(248, 113, 113, 0.22); color: var(--ar-danger); }
+
+@media (max-width: 760px) {
+  .connection-status { top: 14px; left: 14px; min-height: 36px; padding: 0 9px; font-size: 8px; }
+}

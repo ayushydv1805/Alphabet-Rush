@@ -238,7 +238,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
         room.pendingValidations = Math.max(0, room.pendingValidations - 1);
       }
 
-      const currentRoom = getRoom(roomCode);
+      const currentRoom = getRoom(code);
       if (!currentRoom) return;
 
       const currentPlayer = currentRoom.players.find(
@@ -332,12 +332,12 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
 
       if (!room.roundEnded) return;
 
-      if (roundId && room.roundId && roundId !== room.roundId) {
+      if (!roundId || !room.roundId || roundId !== room.roundId) {
         socket.emit("actionError", "This result screen is outdated.");
         return;
       }
 
-      if (gameId && gameId !== room.gameId) {
+      if (!gameId || gameId !== room.gameId) {
         socket.emit("actionError", "This game session is outdated.");
         return;
       }

@@ -136,8 +136,8 @@ function Game() {
 
     socket.emit("submitAnswers", {
       roomCode: gameData.roomCode,
+      roundId: gameData.roundId,
       answers,
-      submittedAt: Date.now(),
     });
 
     setSubmitted(true);

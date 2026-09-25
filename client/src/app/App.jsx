@@ -1,5 +1,7 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import SoundToggle from "../components/common/SoundToggle";
+import ConnectionStatus from "../components/common/ConnectionStatus";
+import ActionFeedback from "../components/common/ActionFeedback";
 import ThemeToggle from "../components/common/ThemeToggle";
 import CreateRoom from "../pages/CreateRoom";
 import Game from "../pages/Game";
@@ -16,6 +18,8 @@ function App() {
     <BrowserRouter>
       <SoundToggle />
       <ThemeToggle />
+      <ConnectionStatus />
+      <ActionFeedback />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/create-room" element={<CreateRoom />} />
