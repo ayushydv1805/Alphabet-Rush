@@ -66,6 +66,7 @@ function createGameEngine({ io }) {
     room.winnerIds = roundWinners.winnerIds;
     room.winnerNames = roundWinners.winnerNames;
     room.winnerId = room.winnerIds[0] || null;
+    const mode = getGameModeConfig(room.gameMode);
 
     io.to(roomCode).emit("roundEnded", {
       roomCode,
@@ -75,6 +76,7 @@ function createGameEngine({ io }) {
       totalRounds: room.rounds,
       totalPlayers: room.players.length,
       gameMode: room.gameMode,
+      roundId: room.roundId,
       modeName: mode.name,
       modeIcon: mode.icon,
       scoreMultiplier: mode.scoreMultiplier,
@@ -139,6 +141,7 @@ function createGameEngine({ io }) {
 
     room.currentRound = roundNumber;
     const mode = getGameModeConfig(room.gameMode);
+    room.roundId = require("node:crypto").randomUUID();
     room.currentLetter = getRoundLetter(room.gameMode);
     room.roundStartedAt = Date.now();
     room.winnerId = null;

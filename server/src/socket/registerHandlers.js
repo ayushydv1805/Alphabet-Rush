@@ -2,11 +2,23 @@ const crypto = require("node:crypto");
 const { createUniqueRoomCode } = require("../utils/roomCode");
 const { getRoom, createRoom, deleteRoom, rooms } = require("../store/rooms");
 const { getGameModeConfig } = require("../game/gameModes");
+const {
+  normalizeRoomCode,
+  isValidRoomCode,
+  normalizeName,
+  normalizeCosmetic,
+  normalizeGameMode,
+  normalizeAnswers,
+  isValidAnswerPayload,
+} = require("../utils/payload");
+const { createRateLimiter } = require("../utils/rateLimiter");
 
 const MAX_PLAYERS = 10;
 const ALLOWED_ROUNDS = [5, 10, 15, 20];
 const DEFAULT_AVATAR = "⚡";
 const DEFAULT_TITLE = "Rush Rookie";
+const actionLimiter = createRateLimiter({ windowMs: 3000, max: 8 });
+const submissionLimiter = createRateLimiter({ windowMs: 2500, max: 2 });
 
 function toPlayerSummary(player) {
   return {
@@ -37,55 +49,17 @@ function resetPlayerRound(player, resetScore = false) {
   player.roundPoints = 0;
 }
 
-function normalizeName(value) {
-  return typeof value === "string" ? value.trim().slice(0, 20) : "";
-}
-
-function normalizeCosmetic(value, fallback, maxLength) {
-  return typeof value === "string" ? value.trim().slice(0, maxLength) || fallback : fallback;
-}
-
-function normalizeGameMode(value) {
-  return getGameModeConfig(typeof value === "string" ? value.trim().toLowerCase() : "").id;
-}
-
-function normalizeAnswers(value) {
-  const source = value && typeof value === "object" ? value : {};
-
-  return {
-    name: typeof source.name === "string" ? source.name.trim().slice(0, 80) : "",
-    place: typeof source.place === "string" ? source.place.trim().slice(0, 80) : "",
-    thing: typeof source.thing === "string" ? source.thing.trim().slice(0, 80) : "",
-    animal: typeof source.animal === "string" ? source.animal.trim().slice(0, 80) : "",
-    food: typeof source.food === "string" ? source.food.trim().slice(0, 80) : "",
-  };
-}
-
-function makePlayer(socket, name, profile) {
-  return {
-    id: socket.id,
-    name,
-    avatar: normalizeCosmetic(profile?.avatar, DEFAULT_AVATAR, 12),
-    title: normalizeCosmetic(profile?.title, DEFAULT_TITLE, 28),
-    score: 0,
-    roundPoints: 0,
-    correctCount: 0,
-    currentStreak: 0,
-    bestStreak: 0,
-    perfectRounds: 0,
-    answers: {},
-    validation: {},
-    submittedAt: null,
-    submitted: false,
-    allCorrect: false,
-  };
-}
-
 function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
   io.on("connection", (socket) => {
     console.log("Player connected:", socket.id);
 
-    socket.on("createRoom", ({ playerName, rounds, gameMode, profile }) => {
+    socket.on("createRoom", (payload) => {
+      if (!actionLimiter.isAllowed(socket.id + ":create")) {
+        socket.emit("createError", "Too many requests. Please wait a moment.");
+        return;
+      }
+
+      const { playerName, rounds, gameMode, profile } = payload || {};
       const name = normalizeName(playerName);
 
       if (!name) {
@@ -134,11 +108,21 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
       });
     });
 
-    socket.on("joinRoom", ({ roomCode, playerName, profile }) => {
-      const code =
-        typeof roomCode === "string" ? roomCode.trim().toUpperCase() : "";
+    socket.on("joinRoom", (payload) => {
+      if (!actionLimiter.isAllowed(socket.id + ":join")) {
+        socket.emit("joinError", "Too many requests. Please wait a moment.");
+        return;
+      }
+
+      const { roomCode, playerName, profile } = payload || {};
+      const code = normalizeRoomCode(roomCode);
       const name = normalizeName(playerName);
       const room = getRoom(code);
+
+      if (!isValidRoomCode(code)) {
+        socket.emit("joinError", "Room code must be exactly 6 characters.");
+        return;
+      }
 
       if (!room) {
         socket.emit("joinError", "Room not found");
@@ -185,18 +169,46 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
       });
     });
 
-    socket.on("startGame", ({ roomCode }) => {
-      const room = getRoom(roomCode);
+    socket.on("startGame", ({ roomCode } = {}) => {
+      if (!actionLimiter.isAllowed(socket.id + ":start")) return;
 
-      if (!room || room.hostId !== socket.id || room.players.length < 1) return;
+      const code = normalizeRoomCode(roomCode);
+      const room = getRoom(code);
+
+      if (!room) {
+        socket.emit("actionError", "Room not found.");
+        return;
+      }
+
+      if (room.hostId !== socket.id) {
+        socket.emit("actionError", "Only the host can start the game.");
+        return;
+      }
+
       if (room.currentRound > 0 && !room.roundEnded) return;
-
-      startRound(roomCode, 1);
+      startRound(code, 1);
     });
 
-    socket.on("submitAnswers", async ({ roomCode, answers }) => {
-      const room = getRoom(roomCode);
+    socket.on("submitAnswers", async (payload) => {
+      if (!submissionLimiter.isAllowed(socket.id + ":submit")) {
+        socket.emit("actionError", "Submission rate limit reached. Please wait.");
+        return;
+      }
+
+      const { roomCode, answers, roundId } = payload || {};
+      const code = normalizeRoomCode(roomCode);
+      const room = getRoom(code);
       if (!room || room.roundEnded || room.roundExpired) return;
+
+      if (!roundId || roundId !== room.roundId) {
+        socket.emit("actionError", "This round is no longer active. Please use the current round.");
+        return;
+      }
+
+      if (!isValidAnswerPayload(answers)) {
+        socket.emit("actionError", "Invalid answer payload.");
+        return;
+      }
 
       const player = room.players.find((item) => item.id === socket.id);
       if (!player || player.submitted) return;
@@ -266,7 +278,15 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
         currentPlayer.currentStreak = 0;
       }
 
-      io.to(roomCode).emit("playerSubmitted", {
+      socket.emit("submissionValidated", {
+        roundId: currentRoom.roundId,
+        validation,
+        correctCount,
+        roundPoints: currentPlayer.roundPoints,
+        currentStreak: currentPlayer.currentStreak,
+      });
+
+      io.to(code).emit("playerSubmitted", {
         playerId: currentPlayer.id,
         playerName: currentPlayer.name,
         roundPoints: currentPlayer.roundPoints,
@@ -296,17 +316,38 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
       }
     });
 
-    socket.on("nextRound", ({ roomCode }) => {
-      const room = getRoom(roomCode);
+    socket.on("nextRound", ({ roomCode, roundId, gameId } = {}) => {
+      const code = normalizeRoomCode(roomCode);
+      const room = getRoom(code);
 
-      if (!room || room.hostId !== socket.id || !room.roundEnded) return;
+      if (!room) {
+        socket.emit("actionError", "Room not found.");
+        return;
+      }
+
+      if (room.hostId !== socket.id) {
+        socket.emit("actionError", "Only the host can advance the round.");
+        return;
+      }
+
+      if (!room.roundEnded) return;
+
+      if (roundId && room.roundId && roundId !== room.roundId) {
+        socket.emit("actionError", "This result screen is outdated.");
+        return;
+      }
+
+      if (gameId && gameId !== room.gameId) {
+        socket.emit("actionError", "This game session is outdated.");
+        return;
+      }
 
       if (room.currentRound >= room.rounds) {
         const players = [...room.players].sort((a, b) => b.score - a.score);
         const maxScore = players.length ? players[0].score : 0;
         const winners = players.filter((player) => player.score === maxScore);
 
-        io.to(roomCode).emit("gameOver", {
+        io.to(code).emit("gameOver", {
           roomCode,
           gameId: room.gameId,
           hostId: room.hostId,
@@ -323,13 +364,29 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
         return;
       }
 
-      startRound(roomCode, room.currentRound + 1);
+      startRound(code, room.currentRound + 1);
     });
 
-    socket.on("rematch", ({ roomCode }) => {
-      const room = getRoom(roomCode);
+    socket.on("rematch", ({ roomCode, gameId } = {}) => {
+      const code = normalizeRoomCode(roomCode);
+      const room = getRoom(code);
 
-      if (!room || room.hostId !== socket.id || !room.roundEnded) return;
+      if (!room) {
+        socket.emit("actionError", "Room not found.");
+        return;
+      }
+
+      if (room.hostId !== socket.id) {
+        socket.emit("actionError", "Only the host can start a rematch.");
+        return;
+      }
+
+      if (!room.roundEnded) return;
+
+      if (gameId && gameId !== room.gameId) {
+        socket.emit("actionError", "This game session is outdated.");
+        return;
+      }
 
       room.currentRound = 0;
       room.gameId = crypto.randomUUID();
@@ -341,7 +398,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
       room.pendingValidations = 0;
 
       room.players.forEach((player) => resetPlayerRound(player, true));
-      startRound(roomCode, 1);
+      startRound(code, 1);
     });
 
     socket.on("disconnect", () => {

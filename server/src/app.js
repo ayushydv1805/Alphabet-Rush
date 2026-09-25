@@ -18,8 +18,8 @@ function createApp() {
     : null;
   const app = express();
 
-  app.use(cors());
-  app.use(express.json());
+  app.use(cors(createCorsOptions()));
+  app.use(express.json({ limit: "32kb" }));
 
   app.get("/", (_req, res) => {
     res.send("Alphabet Rush Server is running!");
