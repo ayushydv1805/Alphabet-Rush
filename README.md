@@ -483,12 +483,38 @@ Set OPENAI_API_KEY in the Render environment.
 
 ---
 
+## 🔐 Persistent Multiplayer
+
+The production backend now supports durable anonymous player sessions and Redis-backed multiplayer state.
+
+### Durable identity
+- Each player receives a signed identity token.
+- The token is stored in the browser and sent back on reconnect.
+- A reconnect can reattach the socket to the same player record instead of creating a duplicate identity.
+
+### Shared realtime state
+- Render Key Value is used as the Redis endpoint.
+- Socket.IO uses the Redis adapter for cross-instance broadcast coordination.
+- Room snapshots are written to Redis with a TTL and restored on server startup.
+- An in-flight round is closed safely after a server restart because an old timer/AI request cannot be resumed safely.
+
+### Render infrastructure
+The repository includes `render.yaml` describing:
+- The Alphabet Rush web service.
+- The Render Key Value instance.
+- The Render Postgres instance and service-level connection references.
+
+The existing deployed Render service can use these references after a Blueprint sync. The repository does not store database credentials.
+
+---
+
 ## ⚠️ Current Limitations
 
 The current implementation is intentionally prototype-oriented:
 
-- Active rooms are stored in server memory.
-- Rooms disappear if the backend process restarts.
+- The in-memory room store remains the authoritative hot cache.
+- Redis snapshots are used for recovery/shared state; the current Render free Key Value tier has persistence disabled, so it should not be treated as a permanent audit database.
+- Render Postgres is provisioned and declared in the Blueprint, but a relational room-history layer is not yet enabled in the running service.
 - There is no database persistence.
 - There is no user authentication system.
 - Answer validation depends on the OpenAI service.
