@@ -11,7 +11,7 @@ function base64Url(value) {
   return Buffer.from(value)
     .toString("base64")
     .replace(/=/g, "")
-    .replace(/+/g, "-")
+    .replace(/\+/g, "-")
     .replace(///g, "_");
 }
 
