@@ -20,6 +20,7 @@ function createRoom(roomCode, room) {
   const now = Date.now();
 
   rooms[roomCode] = {
+    roomCode,
     ...room,
     createdAt: room.createdAt || now,
     lastActivityAt: now,
