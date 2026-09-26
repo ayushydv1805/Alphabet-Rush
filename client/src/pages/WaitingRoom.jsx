@@ -4,6 +4,7 @@ import socket from "../services/socket";
 import PlayerList from "../components/rooms/PlayerList";
 import RoomCode from "../components/rooms/RoomCode";
 import { GAME_MODES, MAX_PLAYERS } from "../constants/game";
+import { clearActiveSession } from "../services/session";
 
 function WaitingRoom() {
   const navigate = useNavigate();
@@ -71,7 +72,10 @@ function WaitingRoom() {
           START GAME
         </button>
 
-        <button className="leave-btn" type="button" onClick={() => navigate("/")}>
+        <button className="leave-btn" type="button" onClick={() => {
+            clearActiveSession();
+            navigate("/");
+          }>
           ← Leave Room
         </button>
       </section>
