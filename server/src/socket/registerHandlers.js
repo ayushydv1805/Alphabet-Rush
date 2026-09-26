@@ -13,6 +13,8 @@ const {
 } = require("../utils/payload");
 const { createRateLimiter } = require("../utils/rateLimiter");
 const { logEvent, logError } = require("../utils/logger");
+const { createIdentityToken, verifyIdentityToken } = require("../auth/identity");
+const { persistRoom, deletePersistedRoom } = require("../store/roomPersistence");
 
 const MAX_PLAYERS = 10;
 const ALLOWED_ROUNDS = [5, 10, 15, 20];
@@ -50,7 +52,7 @@ function resetPlayerRound(player, resetScore = false) {
   player.roundPoints = 0;
 }
 
-function makePlayer(socket, name, profile) {
+function makePlayer(socket, name, profile, playerId) {
   const safeProfile =
     profile && typeof profile === "object" && !Array.isArray(profile)
       ? profile
@@ -58,6 +60,7 @@ function makePlayer(socket, name, profile) {
 
   return {
     id: socket.id,
+    playerId,
     name,
     avatar: normalizeCosmetic(safeProfile.avatar, DEFAULT_AVATAR),
     title: normalizeCosmetic(safeProfile.title, DEFAULT_TITLE),
@@ -85,7 +88,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
         return;
       }
 
-      const { playerName, rounds, gameMode, profile } = payload || {};
+      const { playerName, rounds, gameMode, profile, identityToken } = payload || {};
       const name = normalizeName(playerName);
 
       if (!name) {
@@ -99,7 +102,10 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
         : 10;
       const selectedMode = normalizeGameMode(gameMode);
 
-      const player = makePlayer(socket, name, profile);
+      const verifiedIdentity = verifyIdentityToken(identityToken);
+      const playerId = verifiedIdentity?.playerId || crypto.randomUUID();
+      const player = makePlayer(socket, name, profile, playerId);
+      const freshIdentityToken = createIdentityToken(playerId);
 
       const room = createRoom(roomCode, {
         gameId: crypto.randomUUID(),
@@ -120,11 +126,14 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
       });
 
       socket.join(roomCode);
+      persistRoom(room);
 
       logEvent("room_created", { roomCode, playerId: socket.id, rounds: room.rounds, gameMode: room.gameMode });
       socket.emit("roomCreated", {
         roomCode,
         gameId: room.gameId,
+        identityToken: freshIdentityToken,
+        playerId: player.playerId,
         playerName: player.name,
         avatar: player.avatar,
         title: player.title,
@@ -141,7 +150,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
         return;
       }
 
-      const { roomCode, playerName, profile } = payload || {};
+      const { roomCode, playerName, profile, identityToken } = payload || {};
       const code = normalizeRoomCode(roomCode);
       const name = normalizeName(playerName);
       const room = getRoom(code);
@@ -171,14 +180,55 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
         return;
       }
 
-      const player = makePlayer(socket, name, profile);
+      const verifiedIdentity = verifyIdentityToken(identityToken);
+      const playerId = verifiedIdentity?.playerId || crypto.randomUUID();
+      const existingPlayer = room.players.find(
+        (item) => item.playerId === playerId
+      );
+
+      if (existingPlayer) {
+        existingPlayer.id = socket.id;
+        existingPlayer.name = name;
+        existingPlayer.avatar = normalizeCosmetic(
+          profile?.avatar,
+          existingPlayer.avatar || DEFAULT_AVATAR
+        );
+        existingPlayer.title = normalizeCosmetic(
+          profile?.title,
+          existingPlayer.title || DEFAULT_TITLE
+        );
+
+        socket.join(code);
+        persistRoom(room);
+
+        socket.emit("roomJoined", {
+          roomCode: code,
+          gameId: room.gameId,
+          identityToken: createIdentityToken(playerId),
+          playerId,
+          playerName: existingPlayer.name,
+          avatar: existingPlayer.avatar,
+          title: existingPlayer.title,
+          rounds: room.rounds,
+          gameMode: room.gameMode,
+          hostId: room.hostId,
+          players: room.players.map(toPlayerSummary),
+        });
+        return;
+      }
+
+      const freshIdentityToken = createIdentityToken(playerId);
+      const player = makePlayer(socket, name, profile, playerId);
       room.players.push(player);
       socket.join(code);
+      persistRoom(room);
 
       logEvent("room_joined", { roomCode: code, playerId: socket.id, players: room.players.length });
       socket.emit("roomJoined", {
         roomCode: code,
         gameId: room.gameId,
+        identityToken: freshIdentityToken,
+        playerId: player.playerId,
         playerName: player.name,
         avatar: player.avatar,
         title: player.title,
@@ -194,6 +244,139 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
         gameMode: room.gameMode,
         hostId: room.hostId,
         players: room.players.map(toPlayerSummary),
+      });
+    });
+
+    socket.on("resumeRoom", (payload = {}) => {
+      const { roomCode, identityToken } = payload;
+      const code = normalizeRoomCode(roomCode);
+      const verified = verifyIdentityToken(identityToken);
+
+      if (!isValidRoomCode(code) || !verified?.playerId) {
+        socket.emit("actionError", "Your player session could not be restored.");
+        return;
+      }
+
+      const room = getRoom(code);
+      if (!room) {
+        socket.emit("actionError", "That room is no longer available.");
+        return;
+      }
+
+      const player = room.players.find(
+        (item) => item.playerId === verified.playerId
+      );
+
+      if (!player) {
+        socket.emit("actionError", "Your player session is not part of this room.");
+        return;
+      }
+
+      player.id = socket.id;
+      socket.join(code);
+      persistRoom(room);
+
+      if (room.currentRound === 0) {
+        socket.emit("roomResumed", {
+          status: "waiting",
+          roomCode: code,
+          gameId: room.gameId,
+          identityToken: createIdentityToken(player.playerId),
+          playerId: player.playerId,
+          playerName: player.name,
+          avatar: player.avatar,
+          title: player.title,
+          rounds: room.rounds,
+          gameMode: room.gameMode,
+          hostId: room.hostId,
+          players: room.players.map(toPlayerSummary),
+        });
+        return;
+      }
+
+      const mode = getGameModeConfig(room.gameMode);
+      const base = {
+        roomCode: code,
+        gameId: room.gameId,
+        hostId: room.hostId,
+        currentRound: room.currentRound,
+        totalRounds: room.rounds,
+        totalPlayers: room.players.length,
+        gameMode: room.gameMode,
+        roundId: room.roundId,
+        modeName: mode.name,
+        modeIcon: mode.icon,
+        scoreMultiplier: mode.scoreMultiplier,
+        letter: room.currentLetter,
+        roundStartedAt: room.roundStartedAt,
+        timeLimit: mode.timeLimit / 1000,
+        playerId: player.playerId,
+        playerName: player.name,
+        avatar: player.avatar,
+        title: player.title,
+        players: room.players.map((item) => ({
+          id: item.id,
+          playerId: item.playerId,
+          name: item.name,
+          avatar: item.avatar,
+          title: item.title,
+          score: item.score,
+          roundPoints: item.roundPoints || 0,
+          correctCount: item.correctCount || 0,
+          currentStreak: item.currentStreak || 0,
+          bestStreak: item.bestStreak || 0,
+          perfectRounds: item.perfectRounds || 0,
+          submitted: item.submitted,
+          submittedAt: item.submittedAt,
+          answers: item.answers,
+          validation: item.validation,
+        })),
+      };
+
+      if (!room.roundEnded && !room.roundExpired) {
+        socket.emit("roomResumed", { status: "active", ...base });
+        return;
+      }
+
+      if (room.currentRound >= room.rounds) {
+        const ranked = [...room.players].sort((a, b) => b.score - a.score);
+        const maxScore = ranked.length ? ranked[0].score : 0;
+        const winners = ranked.filter((item) => item.score === maxScore);
+
+        socket.emit("roomResumed", {
+          status: "finished",
+          roomCode: code,
+          gameId: room.gameId,
+          hostId: room.hostId,
+          totalRounds: room.rounds,
+          winnerIds: winners.map((item) => item.id),
+          winnerNames: winners.map((item) => item.name),
+          winnerId: winners[0]?.id || null,
+          winnerName: winners[0]?.name || "No winner",
+          winningScore: maxScore,
+          gameMode: room.gameMode,
+          players: ranked.map(toPlayerSummary),
+        });
+        return;
+      }
+
+      const maxRoundPoints = Math.max(
+        0,
+        ...room.players.map((item) => item.roundPoints || 0)
+      );
+      const winners = room.players.filter(
+        (item) => (item.roundPoints || 0) === maxRoundPoints && maxRoundPoints > 0
+      );
+
+      socket.emit("roomResumed", {
+        status: "result",
+        ...base,
+        endReason: room.roundExpired ? "time-up" : "all-submitted",
+        winnerIds: winners.map((item) => item.id),
+        winnerNames: winners.map((item) => item.name),
+        winnerId: winners[0]?.id || null,
+        winnerName: winners[0]?.name || "No scored winner",
+        winningRoundPoints: maxRoundPoints,
       });
     });
 
@@ -215,6 +398,8 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
 
       if (room.currentRound > 0 && !room.roundEnded) return;
       startRound(code, 1);
+      persistRoom(getRoom(code));
+      persistRoom(getRoom(code));
     });
 
     socket.on("submitAnswers", async (payload) => {
@@ -280,6 +465,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
           !currentRoom.roundEnded
         ) {
           endRound(roomCode, "time-up");
+        persistRoom(currentRoom);
         }
         return;
       }
@@ -294,6 +480,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
       currentPlayer.allCorrect = correctCount === 5;
 
       currentPlayer.score += currentPlayer.roundPoints;
+      persistRoom(currentRoom);
 
       if (correctCount === 5) {
         currentPlayer.currentStreak += 1;
@@ -336,6 +523,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
         currentRoom.pendingValidations === 0
       ) {
         endRound(roomCode, "all-submitted");
+        persistRoom(currentRoom);
       } else if (
         !currentRoom.roundEnded &&
         currentRoom.roundExpired &&
@@ -394,6 +582,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
       }
 
       startRound(code, room.currentRound + 1);
+      persistRoom(getRoom(code));
     });
 
     socket.on("rematch", ({ roomCode, gameId } = {}) => {
@@ -441,10 +630,13 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
         if (!room.players.length) {
           if (room.roundTimer) clearTimeout(room.roundTimer);
           deleteRoom(roomCode);
+          deletePersistedRoom(roomCode);
           continue;
         }
 
         logEvent("socket_player_disconnected", { roomCode, playerId: socket.id, remainingPlayers: room.players.length });
+        persistRoom(room);
+
         if (room.hostId === socket.id) {
           room.hostId = room.players[0].id;
         }
