@@ -2,6 +2,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import SoundToggle from "../components/common/SoundToggle";
 import ConnectionStatus from "../components/common/ConnectionStatus";
 import ActionFeedback from "../components/common/ActionFeedback";
+import ResumeSession from "../components/common/ResumeSession";
 import ThemeToggle from "../components/common/ThemeToggle";
 import CreateRoom from "../pages/CreateRoom";
 import Game from "../pages/Game";
@@ -20,6 +21,7 @@ function App() {
       <ThemeToggle />
       <ConnectionStatus />
       <ActionFeedback />
+      <ResumeSession />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/create-room" element={<CreateRoom />} />
