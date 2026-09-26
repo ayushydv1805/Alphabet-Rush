@@ -7,10 +7,11 @@ const cors = require("cors");
 const { Server } = require("socket.io");
 
 const { createCorsOptions } = require("./config/cors");
-const { rooms } = require("./store/rooms");
+const { rooms, getRoomStats } = require("./store/rooms");
 const { createAnswerValidator } = require("./services/answerValidator");
 const { createGameEngine } = require("./game/gameEngine");
 const { registerSocketHandlers } = require("./socket/registerHandlers");
+const { logEvent } = require("./utils/logger");
 
 function createApp() {
   const openai = process.env.OPENAI_API_KEY
@@ -26,10 +27,20 @@ function createApp() {
   });
 
   app.get("/health", (_req, res) => {
+    const roomStats = getRoomStats();
+    const aiConfigured = Boolean(openai);
+
     res.json({
       ok: true,
-      validator: openai ? "ai" : "fallback",
-      model: openai ? process.env.OPENAI_MODEL || "gpt-5.6-luna" : null,
+      status: aiConfigured ? "healthy" : "degraded",
+      validator: aiConfigured ? "ai" : "fallback",
+      model: aiConfigured
+        ? process.env.OPENAI_MODEL || "gpt-5.6-luna"
+        : null,
+      rooms: roomStats.rooms,
+      players: roomStats.players,
+      uptimeSeconds: Math.floor(process.uptime()),
+      timestamp: new Date().toISOString(),
     });
   });
 
@@ -38,6 +49,11 @@ function createApp() {
 
   const { startRound, endRound } = createGameEngine({ io, rooms });
   const { validateAnswers } = createAnswerValidator(openai);
+
+  logEvent("app_initialized", {
+    validator: openai ? "ai" : "fallback",
+    model: openai ? process.env.OPENAI_MODEL || "gpt-5.6-luna" : null,
+  });
 
   registerSocketHandlers({
     io,
