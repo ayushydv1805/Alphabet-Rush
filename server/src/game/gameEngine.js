@@ -1,6 +1,7 @@
 const { getRoom } = require("../store/rooms");
 const { getGameModeConfig, getRoundLetter } = require("./gameModes");
 const { logEvent } = require("../utils/logger");
+const { persistRoom } = require("../store/roomPersistence");
 
 const ROUND_TIME_LIMIT = 60_000;
 
@@ -107,6 +108,7 @@ function createGameEngine({ io }) {
     }
 
     sendRoundResult(roomCode, endReason);
+    persistRoom(room);
 
     logEvent("round_ended", {
       roomCode,
@@ -188,6 +190,8 @@ function createGameEngine({ io }) {
       roundStartedAt: room.roundStartedAt,
       timeLimit: mode.timeLimit / 1000,
     });
+
+    persistRoom(room);
 
     room.roundTimer = setTimeout(() => {
       if (getRoom(roomCode)) {
