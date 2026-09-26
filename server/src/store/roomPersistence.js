@@ -104,9 +104,11 @@ async function persistRoom(room) {
   if (!roomCode) return false;
 
   try {
-    await client.set(key(roomCode), JSON.stringify(serializeRoom(room)), {
-      EX: TTL_SECONDS,
-    });
+    await client.setEx(
+      key(roomCode),
+      TTL_SECONDS,
+      JSON.stringify(serializeRoom(room))
+    );
     return true;
   } catch (error) {
     console.error(
