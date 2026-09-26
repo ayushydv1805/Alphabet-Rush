@@ -1,65 +1,50 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import socket from "../services/socket";
+import { getIdentityToken, setIdentityToken } from "../services/identity";
+import { getProfile } from "../services/profile";
+import { saveActiveSession } from "../services/session";
 import { GAME_MODES, ROUND_OPTIONS } from "../constants/game";
-import { getAvatar, getProfile, getTitle, updateProfile } from "../services/profile";
 
 function CreateRoom() {
   const navigate = useNavigate();
-  const savedProfile = getProfile();
-  const [playerName, setPlayerName] = useState(savedProfile.name || "");
+  const [playerName, setPlayerName] = useState("");
   const [rounds, setRounds] = useState(10);
   const [gameMode, setGameMode] = useState("classic");
-  const [error, setError] = useState("");
 
   const handleCreateRoom = (event) => {
     event.preventDefault();
     const name = playerName.trim();
 
     if (!name) {
-      setError("Please enter your name.");
+      alert("Please enter your name");
       return;
     }
 
-    const profile = updateProfile({ name });
-    const avatar = getAvatar(profile.avatarId);
-    const title = getTitle(profile.titleId);
-
-    setError("");
-
-    const handleRoomCreated = (roomData) => {
-      socket.off("createError", handleCreateError);
+    socket.once("roomCreated", (roomData) => {
+      setIdentityToken(roomData.identityToken);
+      saveActiveSession({
+        roomCode: roomData.roomCode,
+        gameId: roomData.gameId,
+      });
       navigate("/waiting-room", { state: roomData });
-    };
-
-    const handleCreateError = (message) => {
-      setError(message || "Could not create the room.");
-      socket.off("roomCreated", handleRoomCreated);
-    };
-
-    socket.once("roomCreated", handleRoomCreated);
-    socket.once("createError", handleCreateError);
+    });
 
     socket.emit("createRoom", {
       playerName: name,
       rounds,
       gameMode,
-      profile: {
-        avatar: avatar.icon,
-        title: title.name,
-      },
+      identityToken: getIdentityToken(),
+      profile: getProfile(),
     });
   };
 
   return (
     <main className="room-container">
       <section className="room-card">
-        <div className="room-icon" aria-hidden="true">{getAvatar(savedProfile.avatarId).icon}</div>
+        <div className="room-icon" aria-hidden="true">🎮</div>
         <h1>Create Room</h1>
-        <p className="room-subtitle">
-          Create a room and invite your friends.
-        </p>
-        {error ? <div className="form-error" role="alert">⚠️ {error}</div> : null}
+        <p className="room-subtitle">Create a room and invite your friends.</p>
 
         <form onSubmit={handleCreateRoom}>
           <label htmlFor="player-name">YOUR NAME</label>
@@ -73,8 +58,8 @@ function CreateRoom() {
             autoComplete="nickname"
           />
 
-          <label>NUMBER OF ROUNDS</label>
-          <div className="round-options">
+          <label htmlFor="round-count">NUMBER OF ROUNDS</label>
+          <div id="round-count" className="round-options">
             {ROUND_OPTIONS.map((number) => (
               <button
                 type="button"
@@ -88,35 +73,30 @@ function CreateRoom() {
             ))}
           </div>
 
-          <label>GAME MODE</label>
-          <div className="game-mode-grid">
+          <label htmlFor="game-mode">GAME MODE</label>
+          <div id="game-mode" className="mode-picker">
             {GAME_MODES.map((mode) => (
               <button
                 type="button"
                 key={mode.id}
-                className={gameMode === mode.id ? "game-mode-option selected" : "game-mode-option"}
+                className={
+                  gameMode === mode.id
+                    ? "mode-option selected"
+                    : "mode-option"
+                }
                 onClick={() => setGameMode(mode.id)}
                 aria-pressed={gameMode === mode.id}
               >
-                <span className="game-mode-icon" aria-hidden="true">{mode.icon}</span>
-                <span className="game-mode-name">{mode.name}</span>
+                <span>{mode.icon}</span>
+                <strong>{mode.name}</strong>
                 <small>{mode.description}</small>
               </button>
             ))}
           </div>
 
-          <div className="profile-preview-strip">
-            <span>{getAvatar(savedProfile.avatarId).icon}</span>
-            <div>
-              <strong>{getTitle(savedProfile.titleId).name}</strong>
-              <small>Your profile cosmetics will appear in the match.</small>
-            </div>
-            <button type="button" className="profile-preview-link" onClick={() => navigate("/profile")}>
-              EDIT
-            </button>
-          </div>
-
-          <button className="main-room-btn" type="submit">CREATE ROOM</button>
+          <button className="main-room-btn" type="submit">
+            CREATE ROOM
+          </button>
         </form>
 
         <button className="back-btn" type="button" onClick={() => navigate("/")}>
