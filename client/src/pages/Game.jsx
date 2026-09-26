@@ -130,8 +130,13 @@ function Game() {
   };
 
   const handleSubmit = () => {
-    if (!gameData || submitted || timeLeft <= 0) return;
+    if (!gameData || submitted || timeLeft <= 0 || validating) return;
 
+    if (!socket.connected) {
+      return;
+    }
+
+    setValidating(true);
     playGameSound("submit");
 
     socket.emit("submitAnswers", {
