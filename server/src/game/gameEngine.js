@@ -1,5 +1,6 @@
 const { getRoom } = require("../store/rooms");
 const { getGameModeConfig, getRoundLetter } = require("./gameModes");
+const { logEvent } = require("../utils/logger");
 
 const ROUND_TIME_LIMIT = 60_000;
 
@@ -107,15 +108,14 @@ function createGameEngine({ io }) {
 
     sendRoundResult(roomCode, endReason);
 
-    console.log(
-      "Round " +
-        room.currentRound +
-        " ended in room " +
-        roomCode +
-        " (" +
-        endReason +
-        ")"
-    );
+    logEvent("round_ended", {
+      roomCode,
+      gameId: room.gameId,
+      roundId: room.roundId,
+      round: room.currentRound,
+      reason: endReason,
+      players: room.players.length,
+    });
   }
 
   function markRoundExpired(roomCode) {
@@ -159,6 +159,16 @@ function createGameEngine({ io }) {
       player.allCorrect = false;
       player.roundPoints = 0;
       player.correctCount = 0;
+    });
+
+    logEvent("round_started", {
+      roomCode,
+      gameId: room.gameId,
+      roundId: room.roundId,
+      round: room.currentRound,
+      letter: room.currentLetter,
+      mode: room.gameMode,
+      players: room.players.length,
     });
 
     io.to(roomCode).emit("gameStarted", {
