@@ -19,11 +19,11 @@ function clearRooms() {
 test("tracks room/player counts and removes stale rooms", () => {
   clearRooms();
 
-  createRoom("STALE1", {
+  const staleRoom = createRoom("STALE1", {
     players: [{ id: "p1" }],
     roundEnded: true,
-    lastActivityAt: Date.now() - ROOM_TTL_MS - 1,
   });
+  staleRoom.lastActivityAt = Date.now() - ROOM_TTL_MS - 1;
 
   assert.equal(getRoomStats().rooms, 1);
   assert.equal(getRoomStats().players, 1);
