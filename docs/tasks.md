@@ -113,7 +113,7 @@ A task is complete when:
 
 The backend now has automated coverage for answer validation, game modes, game-engine lifecycle behavior, payload normalization, rate limiting, structured logging, room cleanup and Socket.IO handler flows.
 
-The remaining production test gap is full browser-based end-to-end multiplayer testing with real deployed services.
+The remaining production gap is completing relational Postgres wiring on the existing Render service; the repo contains the Render Blueprint that links the existing Postgres and Key Value resources.
 
 Phase 2 progression work is deployed to the current production frontend/backend commits.
 
