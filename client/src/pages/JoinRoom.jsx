@@ -1,21 +1,26 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import socket from "../services/socket";
-import { getAvatar, getProfile, getTitle, updateProfile } from "../services/profile";
+import { getIdentityToken, setIdentityToken } from "../services/identity";
+import { getProfile } from "../services/profile";
+import { saveActiveSession } from "../services/session";
 
 function JoinRoom() {
   const navigate = useNavigate();
-  const savedProfile = getProfile();
-  const [playerName, setPlayerName] = useState(savedProfile.name || "");
+  const [playerName, setPlayerName] = useState("");
   const [roomCode, setRoomCode] = useState("");
-  const [error, setError] = useState("");
 
   useEffect(() => {
     const handleRoomJoined = (roomData) => {
-      setError("");
+      setIdentityToken(roomData.identityToken);
+      saveActiveSession({
+        roomCode: roomData.roomCode,
+        gameId: roomData.gameId,
+      });
       navigate("/waiting-room", { state: roomData });
     };
-    const handleJoinError = (message) => setError(message || "Could not join the room.");
+
+    const handleJoinError = (message) => alert(message);
 
     socket.on("roomJoined", handleRoomJoined);
     socket.on("joinError", handleJoinError);
@@ -33,38 +38,31 @@ function JoinRoom() {
     const code = roomCode.trim().toUpperCase();
 
     if (!name) {
-      setError("Please enter your name.");
+      alert("Please enter your name");
       return;
     }
 
     if (!code) {
-      setError("Please enter room code.");
+      alert("Please enter room code");
       return;
     }
-
-    setError("");
-
-    const profile = updateProfile({ name });
-    const avatar = getAvatar(profile.avatarId);
-    const title = getTitle(profile.titleId);
 
     socket.emit("joinRoom", {
       playerName: name,
       roomCode: code,
-      profile: {
-        avatar: avatar.icon,
-        title: title.name,
-      },
+      identityToken: getIdentityToken(),
+      profile: getProfile(),
     });
   };
 
   return (
     <main className="room-container">
       <section className="room-card">
-        <div className="room-icon" aria-hidden="true">{getAvatar(savedProfile.avatarId).icon}</div>
+        <div className="room-icon" aria-hidden="true">👥</div>
         <h1>Join Room</h1>
-        <p className="room-subtitle">Enter the room code to join your friends.</p>
-        {error ? <div className="form-error" role="alert">⚠️ {error}</div> : null}
+        <p className="room-subtitle">
+          Enter the room code to join your friends.
+        </p>
 
         <form onSubmit={handleJoinRoom}>
           <label htmlFor="join-player-name">YOUR NAME</label>
@@ -90,18 +88,9 @@ function JoinRoom() {
             spellCheck="false"
           />
 
-          <div className="profile-preview-strip">
-            <span>{getAvatar(savedProfile.avatarId).icon}</span>
-            <div>
-              <strong>{getTitle(savedProfile.titleId).name}</strong>
-              <small>Your profile cosmetics will appear in the match.</small>
-            </div>
-            <button type="button" className="profile-preview-link" onClick={() => navigate("/profile")}>
-              EDIT
-            </button>
-          </div>
-
-          <button className="main-room-btn" type="submit">JOIN ROOM</button>
+          <button className="main-room-btn" type="submit">
+            JOIN ROOM
+          </button>
         </form>
 
         <button className="back-btn" type="button" onClick={() => navigate("/")}>
