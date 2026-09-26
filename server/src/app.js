@@ -74,7 +74,7 @@ function createApp() {
     endRound,
   });
 
-  return { app, server, io };
+  return { app, server, io, redisReady };
 }
 
 module.exports = { createApp };
