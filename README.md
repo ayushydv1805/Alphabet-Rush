@@ -422,7 +422,7 @@ npm start
 npm test
 ~~~
 
-The repository includes automated backend tests for answer validation; broader game-engine and Socket.IO integration coverage remains on the roadmap.
+The repository includes automated backend tests covering answer validation, game modes, game-engine lifecycle behavior, payload validation, rate limiting, structured logging, room cleanup and Socket.IO handler flows.
 
 ---
 
@@ -494,8 +494,8 @@ The current implementation is intentionally prototype-oriented:
 - Answer validation depends on the OpenAI service.
 - If the AI service is unavailable, only answers covered by the trusted deterministic dictionary can be accepted; unknown answers are not awarded automatically.
 - The validator caches successful category results only for the lifetime of the server process.
-- The design is not currently configured for multiple Socket.IO server instances.
-- There is no complete automated test suite.
+- The design is not currently configured for multiple Socket.IO server instances or shared room state.
+- Full browser-based end-to-end multiplayer testing is not yet automated.
 - CORS is explicitly configured for the current frontend origins.
 - Route navigation uses browser history state for game-session data, so refreshing some game/result pages can lose that state.
 
@@ -503,26 +503,20 @@ The current implementation is intentionally prototype-oriented:
 
 ## 🔮 Roadmap
 
-### Reliability
-- [ ] Automated game-engine unit tests.
-- [ ] Socket.IO integration tests.
-- [ ] Round identifiers for stale-event protection.
-- [ ] Stronger payload validation.
-- [ ] Better disconnect/reconnect handling.
-- [ ] Connection status UI.
+### Phase 4 — Reliability & Production Hardening
+- ✅ Server-authoritative round IDs and host-only actions.
+- ✅ Payload validation and rate limiting.
+- ✅ Automated game-engine and Socket.IO handler tests.
+- ✅ Live connection/reconnection status and in-app error feedback.
+- ✅ AI answer-validation loading feedback.
+- ✅ Structured JSON logging and health diagnostics.
+- ✅ Automatic stale-room cleanup and graceful shutdown.
 
-### UX
-- [ ] Replace browser alerts with reusable in-app messages.
-- [ ] Clear host-only controls in the UI.
-- [ ] Better loading/error state during AI validation.
-- [ ] More accessibility and keyboard-flow testing.
-
-### Production
-- [ ] Persistent game/session storage.
-- [ ] Redis or equivalent realtime coordination.
-- [ ] Authentication.
-- [ ] Rate limiting.
-- [ ] Structured logging and monitoring.
+### Phase 5 — Persistent Multiplayer
+- ⏳ Database-backed room/session state.
+- ⏳ Redis or equivalent realtime coordination.
+- ⏳ Authentication and durable player identity.
+- ⏳ Full browser end-to-end multiplayer testing.
 
 ### Product
 - [ ] Custom category sets.
