@@ -36,8 +36,71 @@ jobs:
 
       - name: Install server
         working-directory: server
-        run: npm ci
+        run: npm install
 
       - name: Test server
         working-directory: server
+        run: npm test
+
+
+  e2e:
+    name: Browser E2E
+    runs-on: ubuntu-latest
+    needs: quality
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install client
+        working-directory: client
+        run: npm install
+
+      - name: Install server
+        working-directory: server
+        run: npm install
+
+      - name: Install Playwright
+        working-directory: e2e
+        run: npm install
+
+      - name: Install Chromium
+        working-directory: e2e
+        run: npx playwright install --with-deps chromium
+
+      - name: Start backend
+        env:
+          E2E_MODE: "true"
+          AUTH_SECRET: "e2e-test-secret"
+          PORT: "5000"
+        run: |
+          cd server
+          nohup npm start > /tmp/alphabet-rush-server.log 2>&1 &
+
+      - name: Start frontend
+        env:
+          VITE_SOCKET_URL: "http://127.0.0.1:5000"
+        run: |
+          cd client
+          nohup npm run dev -- --host 127.0.0.1 > /tmp/alphabet-rush-client.log 2>&1 &
+
+      - name: Wait for services
+        run: |
+          for i in {1..45}; do
+            if curl -sf http://127.0.0.1:5000/health >/dev/null && curl -sf http://127.0.0.1:5173 >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/alphabet-rush-server.log
+          cat /tmp/alphabet-rush-client.log
+          exit 1
+
+      - name: Run browser E2E
+        working-directory: e2e
         run: npm test
