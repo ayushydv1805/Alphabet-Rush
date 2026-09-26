@@ -25,6 +25,8 @@ flowchart TB
     Handlers[Socket Handlers]
     Engine[Game Engine]
     Store[Room Store]
+    Redis[Redis Persistence + Adapter]
+    Identity[Signed Player Identity]
     Validator[AI Validator]
     OpenAI[OpenAI API]
     Profile[Browser Profile Store]
@@ -39,6 +41,8 @@ flowchart TB
     Server --> Handlers
     Handlers --> Engine
     Engine --> Store
+    Store --> Redis
+    SocketClient --> Identity
     Engine --> Validator
     Validator --> OpenAI
 ~~~
@@ -106,6 +110,18 @@ Keeps OpenAI-specific validation code outside the socket event layer. The valida
 
 Owns the active in-memory room map.
 
+### server/src/store/roomPersistence.js
+
+Snapshots active room/session state into Render Key Value and restores sessions on process startup. In-flight rounds are closed safely after a restart instead of resuming an old timer.
+
+### server/src/realtime/redisAdapter.js
+
+Connects Socket.IO to the Render Key Value instance so Socket.IO broadcasts can coordinate across multiple server instances.
+
+### server/src/auth/identity.js
+
+Issues and verifies signed long-lived anonymous player identity tokens used for durable player sessions and reconnect/resume.
+
 ### server/src/utils/
 
 Contains room-code and random-letter utilities.
@@ -165,6 +181,6 @@ For larger production deployments:
 1. Persist game/session state.
 2. Introduce Redis or equivalent for distributed realtime coordination.
 3. Add a Socket.IO adapter.
-4. Add authentication and stronger authorization.
+4. Add database-backed durable room history with Render Postgres.
 5. Add structured logging and monitoring.
-6. Add automated integration tests.
+6. Add automated integration and browser E2E tests.
