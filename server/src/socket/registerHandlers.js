@@ -12,6 +12,7 @@ const {
   isValidAnswerPayload,
 } = require("../utils/payload");
 const { createRateLimiter } = require("../utils/rateLimiter");
+const { logEvent, logError } = require("../utils/logger");
 
 const MAX_PLAYERS = 10;
 const ALLOWED_ROUNDS = [5, 10, 15, 20];
@@ -49,9 +50,34 @@ function resetPlayerRound(player, resetScore = false) {
   player.roundPoints = 0;
 }
 
+function makePlayer(socket, name, profile) {
+  const safeProfile =
+    profile && typeof profile === "object" && !Array.isArray(profile)
+      ? profile
+      : {};
+
+  return {
+    id: socket.id,
+    name,
+    avatar: normalizeCosmetic(safeProfile.avatar, DEFAULT_AVATAR),
+    title: normalizeCosmetic(safeProfile.title, DEFAULT_TITLE),
+    score: 0,
+    roundPoints: 0,
+    correctCount: 0,
+    currentStreak: 0,
+    bestStreak: 0,
+    perfectRounds: 0,
+    answers: {},
+    validation: {},
+    submittedAt: null,
+    submitted: false,
+    allCorrect: false,
+  };
+}
+
 function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
   io.on("connection", (socket) => {
-    console.log("Player connected:", socket.id);
+    logEvent("socket_connected", { socketId: socket.id });
 
     socket.on("createRoom", (payload) => {
       if (!actionLimiter.isAllowed(socket.id + ":create")) {
@@ -95,6 +121,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
 
       socket.join(roomCode);
 
+      logEvent("room_created", { roomCode, playerId: socket.id, rounds: room.rounds, gameMode: room.gameMode });
       socket.emit("roomCreated", {
         roomCode,
         gameId: room.gameId,
@@ -148,6 +175,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
       room.players.push(player);
       socket.join(code);
 
+      logEvent("room_joined", { roomCode: code, playerId: socket.id, players: room.players.length });
       socket.emit("roomJoined", {
         roomCode: code,
         gameId: room.gameId,
@@ -226,7 +254,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
       try {
         validation = await validateAnswers(safeAnswers, letter);
       } catch (error) {
-        console.error("Unexpected answer validator error:", error.message);
+        logError("answer_validation_error", error, { roomCode: code, playerId: socket.id });
         validation = {
           name: false,
           place: false,
@@ -278,6 +306,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
         currentPlayer.currentStreak = 0;
       }
 
+      logEvent("answer_validation_completed", { roomCode: code, playerId: currentPlayer.id, roundId: currentRoom.roundId, correctCount, points: currentPlayer.roundPoints });
       socket.emit("submissionValidated", {
         roundId: currentRoom.roundId,
         validation,
@@ -415,6 +444,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
           continue;
         }
 
+        logEvent("socket_player_disconnected", { roomCode, playerId: socket.id, remainingPlayers: room.players.length });
         if (room.hostId === socket.id) {
           room.hostId = room.players[0].id;
         }
