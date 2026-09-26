@@ -610,3 +610,8 @@ Alphabet Rush is a learning, experimentation and multiplayer gameplay project. A
 
 
 > Deployment check refreshed: latest main-branch build is ready for the connected Vercel project.
+
+
+## ✅ Phase 5 Production Update
+
+The current main branch includes durable anonymous player identity, reconnect/resume support, Redis-backed room snapshots, Socket.IO Redis coordination, Render-managed Key Value integration, and a browser multiplayer smoke test. The deployed Render backend is running with both Redis coordination and room persistence enabled.
