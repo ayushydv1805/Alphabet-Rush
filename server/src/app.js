@@ -11,6 +11,7 @@ const { rooms, getRoomStats } = require("./store/rooms");
 const { createAnswerValidator } = require("./services/answerValidator");
 const { createGameEngine } = require("./game/gameEngine");
 const { registerSocketHandlers } = require("./socket/registerHandlers");
+const { configureRedisAdapter } = require("./realtime/redisAdapter");
 const { logEvent } = require("./utils/logger");
 
 function createApp() {
@@ -47,7 +48,17 @@ function createApp() {
   const server = http.createServer(app);
   const io = new Server(server, { cors: createCorsOptions() });
 
-  const { startRound, endRound } = createGameEngine({ io, rooms });
+  const { startRound, endRound } = createGameEngine({ io });
+  const redisReady = configureRedisAdapter(io).catch((error) => {
+    console.error(
+      JSON.stringify({
+        event: "redis_adapter_start_error",
+        message: error.message,
+      })
+    );
+
+    return { enabled: false, close: async () => {} };
+  });
   const { validateAnswers } = createAnswerValidator(openai);
 
   logEvent("app_initialized", {
