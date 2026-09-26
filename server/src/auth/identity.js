@@ -12,7 +12,7 @@ function base64Url(value) {
     .toString("base64")
     .replace(/=/g, "")
     .replace(/\+/g, "-")
-    .replace(///g, "_");
+    .replace(/\//g, "_");
 }
 
 function sign(value) {
