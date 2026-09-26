@@ -22,6 +22,8 @@ const DEFAULT_AVATAR = "⚡";
 const DEFAULT_TITLE = "Rush Rookie";
 const actionLimiter = createRateLimiter({ windowMs: 3000, max: 8 });
 const submissionLimiter = createRateLimiter({ windowMs: 2500, max: 2 });
+const DISCONNECT_GRACE_MS = 120_000;
+const disconnectTimers = new Map();
 
 function toPlayerSummary(player) {
   return {
@@ -34,6 +36,7 @@ function toPlayerSummary(player) {
     currentStreak: player.currentStreak || 0,
     bestStreak: player.bestStreak || 0,
     perfectRounds: player.perfectRounds || 0,
+    connected: player.connected !== false,
   };
 }
 
@@ -71,6 +74,8 @@ function makePlayer(socket, name, profile, playerId) {
     currentStreak: 0,
     bestStreak: 0,
     perfectRounds: 0,
+    connected: true,
+    disconnectedAt: null,
     answers: {},
     validation: {},
     submittedAt: null,
@@ -276,6 +281,15 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
       }
 
       player.id = socket.id;
+      player.connected = true;
+      player.disconnectedAt = null;
+
+      const resumeTimer = disconnectTimers.get(player.playerId);
+      if (resumeTimer) {
+        clearTimeout(resumeTimer);
+        disconnectTimers.delete(player.playerId);
+      }
+
       if (room.hostPlayerId === player.playerId) {
         room.hostId = socket.id;
       }
@@ -404,7 +418,6 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
 
       if (room.currentRound > 0 && !room.roundEnded) return;
       startRound(code, 1);
-      persistRoom(getRoom(code));
       persistRoom(getRoom(code));
     });
 
@@ -648,25 +661,13 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
     socket.on("disconnect", () => {
       for (const roomCode in rooms) {
         const room = rooms[roomCode];
-        const wasPlayer = room.players.some((player) => player.id === socket.id);
-        if (!wasPlayer) continue;
+        const player = room.players.find((item) => item.id === socket.id);
+        if (!player) continue;
 
-        room.players = room.players.filter((player) => player.id !== socket.id);
-
-        if (!room.players.length) {
-          if (room.roundTimer) clearTimeout(room.roundTimer);
-          deleteRoom(roomCode);
-          deletePersistedRoom(roomCode);
-          continue;
-        }
-
-        logEvent("socket_player_disconnected", { roomCode, playerId: socket.id, remainingPlayers: room.players.length });
+        player.connected = false;
+        player.disconnectedAt = Date.now();
+        player.id = player.playerId;
         persistRoom(room);
-
-        if (room.hostId === socket.id) {
-          room.hostId = room.players[0].id;
-          room.hostPlayerId = room.players[0].playerId;
-        }
 
         io.to(roomCode).emit("roomUpdated", {
           roomCode,
@@ -677,11 +678,76 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
           players: room.players.map(toPlayerSummary),
         });
 
+        logEvent("socket_player_disconnected", {
+          roomCode,
+          playerId: player.playerId,
+          remainingPlayers: room.players.filter(
+            (item) => item.connected !== false
+          ).length,
+        });
+
+        // A temporary network/browser disconnect should not immediately delete
+        // the player's session. Give the same player a grace period to resume.
+        const timerKey = player.playerId;
+        const timer = setTimeout(() => {
+          disconnectTimers.delete(timerKey);
+
+          const currentRoom = getRoom(roomCode);
+          if (!currentRoom) return;
+
+          const currentPlayer = currentRoom.players.find(
+            (item) => item.playerId === timerKey
+          );
+
+          if (!currentPlayer || currentPlayer.connected !== false) return;
+
+          currentRoom.players = currentRoom.players.filter(
+            (item) => item.playerId !== timerKey
+          );
+
+          if (!currentRoom.players.length) {
+            if (currentRoom.roundTimer) clearTimeout(currentRoom.roundTimer);
+            deleteRoom(roomCode);
+            deletePersistedRoom(roomCode);
+            return;
+          }
+
+          // Only transfer host after the grace period has truly expired.
+          if (currentRoom.hostPlayerId === timerKey) {
+            const newHost = currentRoom.players.find(
+              (item) => item.connected !== false
+            ) || currentRoom.players[0];
+
+            currentRoom.hostPlayerId = newHost.playerId;
+            currentRoom.hostId = newHost.id;
+          }
+
+          persistRoom(currentRoom);
+
+          io.to(roomCode).emit("roomUpdated", {
+            roomCode,
+            gameId: currentRoom.gameId,
+            rounds: currentRoom.rounds,
+            gameMode: currentRoom.gameMode,
+            hostId: currentRoom.hostId,
+            players: currentRoom.players.map(toPlayerSummary),
+          });
+        }, DISCONNECT_GRACE_MS);
+
+        disconnectTimers.set(timerKey, timer);
+
+        // A disconnecting player is excluded from the "everyone submitted"
+        // check until they reconnect or their grace period expires.
+        const activePlayers = room.players.filter(
+          (item) => item.connected !== false
+        );
+
         const everyoneSubmitted =
           room.currentRound > 0 &&
           !room.roundEnded &&
           !room.roundExpired &&
-          room.players.every((player) => player.submitted);
+          activePlayers.length > 0 &&
+          activePlayers.every((item) => item.submitted);
 
         if (everyoneSubmitted && room.pendingValidations === 0) {
           endRound(roomCode, "all-submitted");
