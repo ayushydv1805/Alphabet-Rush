@@ -60,30 +60,30 @@ Completed:
 - [x] Mode displayed in lobby, gameplay and round results.
 - [x] Automated game-mode tests.
 
-## 3. Current Priorities
+## Phase 4 — Reliability & Production Hardening
 
-### Reliability
-- [x] Add answer-validator unit tests.
-- [ ] Add game-engine unit tests.
-- [ ] Add Socket.IO integration tests.
-- [ ] Authorize host-only rematch.
-- [ ] Restrict next-round execution to ended rounds.
-- [ ] Add server payload validation.
-- [ ] Add round IDs for stale-event protection.
+Completed:
+- [x] Answer-validator unit tests.
+- [x] Game-engine unit tests.
+- [x] Socket.IO handler-flow tests.
+- [x] Host-only rematch and next-round authorization.
+- [x] Ended-round and round-ID stale-event protection.
+- [x] Server payload validation and bounded input.
+- [x] Room/action and answer-submission rate limiting.
+- [x] Socket connection/reconnection status UI.
+- [x] In-app socket error feedback.
+- [x] AI validation loading feedback.
+- [x] Structured JSON server logs.
+- [x] Health diagnostics with validator status and active room/player counts.
+- [x] Graceful server shutdown.
+- [x] Automatic cleanup of stale inactive rooms.
+- [x] Reduced-motion support for game feedback.
 
-### UX
-- [ ] Add Socket connection status UI.
-- [ ] Replace browser alerts with reusable in-app messages.
-- [ ] Show clear feedback for host-only actions.
-- [ ] Improve AI validation loading/error state.
-- [ ] Add reconnect messaging.
-
-### Production
-- [ ] Rate-limit answer submission.
-- [ ] Add input/payload size limits.
-- [ ] Add structured logs and monitoring.
-- [ ] Persist or distribute room state.
-- [ ] Add production authentication.
+Phase 5 — Persistent Multiplayer:
+- [ ] Database-backed room/session state.
+- [ ] Redis or equivalent multi-instance Socket.IO coordination.
+- [ ] Production authentication and durable player identity.
+- [ ] Full browser E2E multiplayer test suite.
 
 ## 4. Roadmap
 
@@ -109,9 +109,11 @@ A task is complete when:
 - Relevant checks have been run.
 - Documentation is updated when necessary.
 
-## 6. Testing Gap
+## 6. Testing Status
 
-The answer validator now has automated unit coverage. Game-engine and Socket.IO integration coverage remain technical debt.
+The backend now has automated coverage for answer validation, game modes, game-engine lifecycle behavior, payload normalization, rate limiting, structured logging, room cleanup and Socket.IO handler flows.
+
+The remaining production test gap is full browser-based end-to-end multiplayer testing with real deployed services.
 
 Phase 2 progression work is deployed to the current production frontend/backend commits.
 
