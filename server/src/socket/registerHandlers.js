@@ -26,6 +26,7 @@ const submissionLimiter = createRateLimiter({ windowMs: 2500, max: 2 });
 function toPlayerSummary(player) {
   return {
     id: player.id,
+    playerId: player.playerId,
     name: player.name,
     avatar: player.avatar || DEFAULT_AVATAR,
     title: player.title || DEFAULT_TITLE,
@@ -110,6 +111,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
       const room = createRoom(roomCode, {
         gameId: crypto.randomUUID(),
         hostId: socket.id,
+        hostPlayerId: player.playerId,
         rounds: selectedRounds,
         gameMode: selectedMode,
         currentRound: 0,
@@ -212,6 +214,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
           rounds: room.rounds,
           gameMode: room.gameMode,
           hostId: room.hostId,
+          hostPlayerId: room.hostPlayerId,
           players: room.players.map(toPlayerSummary),
         });
         return;
@@ -273,6 +276,9 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
       }
 
       player.id = socket.id;
+      if (room.hostPlayerId === player.playerId) {
+        room.hostId = socket.id;
+      }
       socket.join(code);
       persistRoom(room);
 
@@ -542,7 +548,17 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
         return;
       }
 
-      if (room.hostId !== socket.id) {
+      const requestingPlayer = room.players.find(
+        (item) => item.id === socket.id
+      );
+      const isHost =
+        room.hostId === socket.id ||
+        Boolean(
+          requestingPlayer?.playerId &&
+            room.hostPlayerId === requestingPlayer.playerId
+        );
+
+      if (!isHost) {
         socket.emit("actionError", "Only the host can advance the round.");
         return;
       }
@@ -594,7 +610,17 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
         return;
       }
 
-      if (room.hostId !== socket.id) {
+      const requestingPlayer = room.players.find(
+        (item) => item.id === socket.id
+      );
+      const isHost =
+        room.hostId === socket.id ||
+        Boolean(
+          requestingPlayer?.playerId &&
+            room.hostPlayerId === requestingPlayer.playerId
+        );
+
+      if (!isHost) {
         socket.emit("actionError", "Only the host can start a rematch.");
         return;
       }
@@ -639,6 +665,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
 
         if (room.hostId === socket.id) {
           room.hostId = room.players[0].id;
+          room.hostPlayerId = room.players[0].playerId;
         }
 
         io.to(roomCode).emit("roomUpdated", {
