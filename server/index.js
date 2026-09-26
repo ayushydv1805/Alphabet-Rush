@@ -14,8 +14,18 @@ const PORT = Number(process.env.PORT) || 5000;
 async function startServer() {
   const { server, redisReady } = createApp();
 
-  const persistenceEnabled = await initRoomPersistence();
-  const restoredRooms = persistenceEnabled ? await hydrateRooms() : 0;
+  let persistenceEnabled = false;
+  let restoredRooms = 0;
+
+  try {
+    persistenceEnabled = await initRoomPersistence();
+    restoredRooms = persistenceEnabled ? await hydrateRooms() : 0;
+  } catch (error) {
+    logError("room_persistence_startup_error", error);
+    await closeRoomPersistence();
+    persistenceEnabled = false;
+  }
+
   const redis = await redisReady;
 
   server.listen(PORT, () => {
