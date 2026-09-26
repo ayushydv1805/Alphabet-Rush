@@ -71,10 +71,9 @@ async function hydrateRooms() {
 
   let restored = 0;
 
-  for await (const scanKey of client.scanIterator({
-    MATCH: PREFIX + "*",
-    COUNT: 100,
-  })) {
+  const keys = await client.keys(PREFIX + "*");
+
+  for (const scanKey of keys) {
     const raw = await client.get(scanKey);
     if (!raw) continue;
 
