@@ -5,6 +5,7 @@ const {
   isValidRoomCode,
   normalizeName,
   normalizeAnswers,
+  normalizeCategoryPack,
 } = require("./payload");
 
 test("validates and normalizes room codes", () => {
@@ -25,4 +26,6 @@ test("normalizes bounded player input", () => {
   assert.equal(answers.name, "Nitin");
   assert.equal(answers.food, "Noodles");
   assert.ok(answers.name.length <= 80);
+  assert.equal(normalizeCategoryPack("tech"), "tech");
+  assert.equal(normalizeCategoryPack("unknown"), "classic");
 });
