@@ -300,3 +300,79 @@ test("uses the configured model", async () => {
 
   assert.equal(openai.calls[0].model, "test-model");
 });
+
+
+test("validates a specialized challenge pack using its own category definitions", async () => {
+  const openai = createMockOpenAI(
+    JSON.stringify({
+      name: true,
+      place: true,
+      thing: true,
+      animal: true,
+      food: true,
+    })
+  );
+
+  const validator = createAnswerValidator(openai);
+
+  const result = await validator.validateAnswers(
+    {
+      name: "Aamir",
+      place: "Amazon",
+      thing: "Android",
+      animal: "Assembly",
+      food: "AWS",
+    },
+    "A",
+    "tech"
+  );
+
+  assert.deepEqual(result, {
+    name: true,
+    place: true,
+    thing: true,
+    animal: true,
+    food: true,
+  });
+  assert.equal(openai.callCount, 1);
+  assert.match(
+    openai.calls[0].input,
+    /Developer \(name\): Aamir/
+  );
+  assert.match(
+    openai.calls[0].input,
+    /Programming language|programming language/i
+  );
+});
+
+test("preserves custom pack category keys and does not use classic fallback", async () => {
+  const openai = {
+    responses: {
+      create: async () => {
+        throw new Error("temporary outage");
+      },
+    },
+  };
+
+  const validator = createAnswerValidator(openai);
+
+  const result = await validator.validateAnswers(
+    {
+      name: "Apple",
+      place: "Amazon",
+      thing: "Android",
+      animal: "Assembly",
+      food: "AWS",
+    },
+    "A",
+    "tech"
+  );
+
+  assert.deepEqual(result, {
+    name: false,
+    place: false,
+    thing: false,
+    animal: false,
+    food: false,
+  });
+});
