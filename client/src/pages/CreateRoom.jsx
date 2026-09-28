@@ -4,6 +4,7 @@ import socket from "../services/socket";
 import { getIdentityToken, setIdentityToken } from "../services/identity";
 import { getProfile } from "../services/profile";
 import { saveActiveSession } from "../services/session";
+import { CATEGORY_PACKS } from "../constants/categoryPacks";
 import { GAME_MODES, ROUND_OPTIONS } from "../constants/game";
 
 function CreateRoom() {
@@ -11,6 +12,7 @@ function CreateRoom() {
   const [playerName, setPlayerName] = useState(() => getProfile().name || "");
   const [rounds, setRounds] = useState(10);
   const [gameMode, setGameMode] = useState("classic");
+  const [categoryPack, setCategoryPack] = useState("classic");
   const [error, setError] = useState("");
   const [creating, setCreating] = useState(false);
 
@@ -63,6 +65,7 @@ function CreateRoom() {
       playerName: name,
       rounds,
       gameMode,
+      categoryPack,
       identityToken: getIdentityToken(),
       profile: getProfile(),
     });
@@ -86,11 +89,15 @@ function CreateRoom() {
         <p className="page-kicker">BUILD YOUR LOBBY</p>
         <h1>Create Room</h1>
         <p className="room-subtitle">
-          Choose the rules, pick your mode, and send the room code to your
-          friends.
+          Choose the rules, game mode and challenge pack, then send the code
+          to your friends.
         </p>
 
-        {error ? <div className="form-error" role="alert">{error}</div> : null}
+        {error ? (
+          <div className="form-error" role="alert">
+            {error}
+          </div>
+        ) : null}
 
         <form onSubmit={handleCreateRoom}>
           <label htmlFor="player-name">YOUR NAME</label>
@@ -144,6 +151,42 @@ function CreateRoom() {
                 <small>{mode.description}</small>
               </button>
             ))}
+          </div>
+
+          <label htmlFor="category-pack">CHALLENGE PACK</label>
+          <div id="category-pack" className="category-pack-grid">
+            {CATEGORY_PACKS.map((pack) => (
+              <button
+                type="button"
+                key={pack.id}
+                className={
+                  categoryPack === pack.id
+                    ? "category-pack-option selected"
+                    : "category-pack-option"
+                }
+                onClick={() => setCategoryPack(pack.id)}
+                aria-pressed={categoryPack === pack.id}
+                disabled={creating}
+              >
+                <span className="category-pack-icon">{pack.icon}</span>
+                <strong>{pack.name}</strong>
+                <small>{pack.description}</small>
+              </button>
+            ))}
+          </div>
+
+          <div className="selected-pack-preview">
+            <span>{CATEGORY_PACKS.find((pack) => pack.id === categoryPack)?.icon}</span>
+            <div>
+              <strong>
+                {CATEGORY_PACKS.find((pack) => pack.id === categoryPack)?.name}
+              </strong>
+              <small>
+                {CATEGORY_PACKS.find((pack) => pack.id === categoryPack)
+                  ?.categories.map((field) => field.label)
+                  .join(" · ")}
+              </small>
+            </div>
           </div>
 
           <button className="main-room-btn" type="submit" disabled={creating}>
