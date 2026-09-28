@@ -184,7 +184,7 @@ function RoundResult() {
           <p className="home-eyebrow">ROUND COMPLETE</p>
           <h1>Round {resultData.currentRound} Results</h1>
           <p className="room-subtitle">
-            {mode.icon} {mode.name} · Letter <strong>{resultData.letter}</strong>
+            {mode.icon} {mode.name} · {categoryPack.icon} {categoryPack.name} · Letter <strong>{resultData.letter}</strong>
             {resultData.endReason === "time-up"
               ? " · Time's up"
               : " · Everyone submitted"}
