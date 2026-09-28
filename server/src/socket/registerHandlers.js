@@ -2,6 +2,7 @@ const crypto = require("node:crypto");
 const { createUniqueRoomCode } = require("../utils/roomCode");
 const { getRoom, createRoom, deleteRoom, rooms } = require("../store/rooms");
 const { getGameModeConfig } = require("../game/gameModes");
+const { getCategoryPackConfig } = require("../game/categoryPacks");
 const {
   normalizeRoomCode,
   isValidRoomCode,
@@ -484,17 +485,18 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
         validation = await validateAnswers(
           safeAnswers,
           letter,
-          currentRoom.categoryPack
+          room.categoryPack
         );
       } catch (error) {
-        logError("answer_validation_error", error, { roomCode: code, playerId: socket.id });
-        validation = {
-          name: false,
-          place: false,
-          thing: false,
-          animal: false,
-          food: false,
-        };
+        logError("answer_validation_error", error, {
+          roomCode: code,
+          playerId: socket.id,
+          categoryPack: room.categoryPack,
+        });
+        const pack = getCategoryPackConfig(room.categoryPack);
+        validation = Object.fromEntries(
+          pack.categories.map(({ key }) => [key, false])
+        );
       } finally {
         room.pendingValidations = Math.max(0, room.pendingValidations - 1);
       }
@@ -525,7 +527,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
       const mode = getGameModeConfig(currentRoom.gameMode);
       currentPlayer.correctCount = correctCount;
       currentPlayer.roundPoints = correctCount * mode.scoreMultiplier;
-      currentPlayer.allCorrect = correctCount === 5;
+      currentPlayer.allCorrect = correctCount === Object.keys(validation).length;
 
       currentPlayer.score += currentPlayer.roundPoints;
 
