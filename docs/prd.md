@@ -54,6 +54,7 @@ flowchart TD
 
 - Current frontend offers 5, 10, 15 and 20 rounds.
 - Host selects a game mode: Classic, Blitz, Double Points or Hard Letters.
+- Host selects a challenge category pack: Classic, India, Entertainment or Tech.
 - Classic uses a 60-second timer and standard scoring.
 - Blitz uses a 30-second timer.
 - Double Points uses a 60-second timer and doubles points for valid answers.
@@ -64,7 +65,7 @@ flowchart TD
 
 ### Answer Validation
 
-Each answer should be non-empty, match the selected category, and begin with the required letter.
+Each answer should be non-empty, match the selected challenge-pack category, and begin with the required letter.
 
 The server performs an authoritative starting-letter check, accepts known unambiguous answers deterministically, and sends unknown answers to an OpenAI Structured Outputs validator. When the first AI pass rejects an unknown answer, a second permissive review checks for a possible false negative. Successful validations are cached for the lifetime of the server process.
 
@@ -124,3 +125,13 @@ The product includes a browser-local player progression layer:
 - Match completion XP.
 
 Progression is intentionally local to the player's browser in the current prototype and is not a server-backed account system.
+
+## 12. Product Expansion
+
+The current product includes four challenge packs:
+- Classic — Name, Place, Thing, Animal, Food.
+- India — Person, Indian Place, Indian Thing, Animal, Indian Food.
+- Entertainment — Actor / Actress, Movie, Character, Game, Brand.
+- Tech — Developer, Company, Technology, Language, Tool.
+
+The same five answer keys are preserved across packs so the realtime protocol stays stable, while the visible labels and AI semantic definitions change with the selected pack.
