@@ -515,7 +515,7 @@ The current implementation is intentionally prototype-oriented:
 - The in-memory room store remains the authoritative hot cache.
 - Redis snapshots are used for recovery/shared state; the current Render free Key Value tier has persistence disabled, so it should not be treated as a permanent audit database.
 - Render Postgres is provisioned and declared in the Blueprint, but a relational room-history layer is not yet enabled in the running service.
-- There is no database persistence.
+- Durable room/session persistence is now available through Render Postgres.
 - There is no user authentication system.
 - Answer validation depends on the OpenAI service.
 - If the AI service is unavailable, only answers covered by the trusted deterministic dictionary can be accepted; unknown answers are not awarded automatically.
