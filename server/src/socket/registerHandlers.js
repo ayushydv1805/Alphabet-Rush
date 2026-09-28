@@ -161,7 +161,13 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
         title: player.title,
         rounds: room.rounds,
         gameMode: room.gameMode,
-        categoryPack: room.categoryPack,
+        categoryPack: pack.id,
+        categoryPackName: pack.name,
+        categories: pack.categories.map(({ key, label, semantic }) => ({
+          key,
+          label,
+          semantic,
+        })),
         hostId: room.hostId,
         players: room.players.map(toPlayerSummary),
       });
@@ -270,6 +276,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
         gameId: room.gameId,
         rounds: room.rounds,
         gameMode: room.gameMode,
+        categoryPack: room.categoryPack,
         hostId: room.hostId,
         players: room.players.map(toPlayerSummary),
       });
@@ -337,6 +344,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
       }
 
       const mode = getGameModeConfig(room.gameMode);
+      const pack = getCategoryPackConfig(room.categoryPack);
       const base = {
         roomCode: code,
         gameId: room.gameId,
@@ -345,7 +353,13 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
         totalRounds: room.rounds,
         totalPlayers: room.players.length,
         gameMode: room.gameMode,
-        categoryPack: room.categoryPack,
+        categoryPack: pack.id,
+        categoryPackName: pack.name,
+        categories: pack.categories.map(({ key, label, semantic }) => ({
+          key,
+          label,
+          semantic,
+        })),
         roundId: room.roundId,
         modeName: mode.name,
         modeIcon: mode.icon,
@@ -398,7 +412,13 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
           winnerName: winners[0]?.name || "No winner",
           winningScore: maxScore,
           gameMode: room.gameMode,
-          categoryPack: room.categoryPack,
+          categoryPack: pack.id,
+          categoryPackName: pack.name,
+          categories: pack.categories.map(({ key, label, semantic }) => ({
+            key,
+            label,
+            semantic,
+          })),
           players: ranked.map(toPlayerSummary),
         });
         return;
@@ -708,6 +728,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
           gameId: room.gameId,
           rounds: room.rounds,
           gameMode: room.gameMode,
+          categoryPack: room.categoryPack,
           hostId: room.hostId,
           players: room.players.map(toPlayerSummary),
         });
