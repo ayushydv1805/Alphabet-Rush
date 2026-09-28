@@ -1,5 +1,6 @@
 const CATEGORIES = ["name", "place", "thing", "animal", "food"];
 const DEFAULT_MODEL = "gpt-5.6-luna";
+const { getCategoryPackConfig } = require("../game/categoryPacks");
 
 const FALLBACK_ANSWERS = {
   name: new Set([
@@ -74,7 +75,7 @@ function extractOutputText(response) {
   }
 
   return response.output
-    .flatMap((item) => Array.isArray(item?.content) ? item.content : [])
+    .flatMap((item) => (Array.isArray(item?.content) ? item.content : []))
     .filter(
       (item) =>
         item?.type === "output_text" && typeof item?.text === "string"
@@ -128,8 +129,8 @@ function buildSchema(categories) {
 function buildJudgePrompt(letter, items, secondPass = false) {
   const answers = items
     .map(
-      ({ category, answer }) =>
-        category.charAt(0).toUpperCase() + category.slice(1) + ": " + answer
+      ({ category, label, definition, answer }) =>
+        label + " (" + category + "): " + answer + "\nDefinition: " + definition
     )
     .join("\n");
 
@@ -144,6 +145,7 @@ function buildJudgePrompt(letter, items, secondPass = false) {
     "\n\n" +
     "The server has already enforced the starting-letter rule. Judge category membership only. " +
     "Accept real names, real places (including states, cities, towns, villages, regions, landmarks), tangible things/objects, animals/species/breeds, and foods/drinks/ingredients. " +
+    "For specialized category packs, follow the supplied category definition exactly. " +
     "Accept proper nouns, Indian/local examples, regional examples, alternate spellings, and less-common but legitimate examples. " +
     "Do NOT reject an answer just because it is not a common everyday word. " +
     "Reject only answers that are clearly nonsense, clearly from another category, or clearly not meaningful.\n\n" +
@@ -172,9 +174,6 @@ async function createJudgeCall(openai, model, letter, items, secondPass = false)
     },
   };
 
-  // For second-chance reviews, let the model use web search when a doubtful
-  // answer needs external factual confirmation. This is especially useful for
-  // real places, animals, foods and less-common proper nouns.
   if (secondPass) {
     request.tools = [{ type: "web_search" }];
   }
@@ -194,6 +193,7 @@ function createAnswerValidator(openai, options = {}) {
       const oldestKey = cache.keys().next().value;
       cache.delete(oldestKey);
     }
+
     cache.set(key, value);
   };
 
@@ -201,17 +201,16 @@ function createAnswerValidator(openai, options = {}) {
     const missing = [];
 
     for (const item of items) {
-      const category = item.category;
-      const value = parsed?.[category];
+      const value = parsed?.[item.category];
 
       if (value === undefined) {
-        missing.push(category);
+        missing.push(item.category);
         continue;
       }
 
-      result[category] = normalizeModelResult(value);
+      result[item.category] = normalizeModelResult(value);
 
-      if (result[category]) {
+      if (result[item.category]) {
         cacheSet(item.key, true);
       }
     }
@@ -224,7 +223,6 @@ function createAnswerValidator(openai, options = {}) {
       throw new Error("OpenAI validator is not configured.");
     }
 
-    // Pass 1: normal semantic category validation.
     const firstResponse = await createJudgeCall(
       openai,
       model,
@@ -241,7 +239,6 @@ function createAnswerValidator(openai, options = {}) {
       throw new Error("AI validator returned invalid structured data.");
     }
 
-    const firstFalse = [];
     const missing = applyParsedResult(result, firstParsed, pending);
 
     if (missing.length) {
@@ -250,17 +247,11 @@ function createAnswerValidator(openai, options = {}) {
       );
     }
 
-    for (const item of pending) {
-      if (!result[item.category]) {
-        firstFalse.push(item);
-      }
-    }
+    const firstFalse = pending.filter(
+      (item) => !result[item.category]
+    );
 
-    // Pass 2 only for false results. This is specifically designed to catch
-    // false negatives without paying for a second call on already-valid answers.
-    if (!firstFalse.length) {
-      return;
-    }
+    if (!firstFalse.length) return;
 
     const secondResponse = await createJudgeCall(
       openai,
@@ -274,9 +265,7 @@ function createAnswerValidator(openai, options = {}) {
       extractOutputText(secondResponse)
     );
 
-    if (!secondParsed) {
-      return;
-    }
+    if (!secondParsed) return;
 
     for (const item of firstFalse) {
       if (normalizeModelResult(secondParsed[item.category])) {
@@ -286,24 +275,26 @@ function createAnswerValidator(openai, options = {}) {
     }
   }
 
-  async function validateAnswers(answers, letter) {
+  async function validateAnswers(
+    answers,
+    letter,
+    categoryPackId = "classic"
+  ) {
     const source = answers && typeof answers === "object" ? answers : {};
+    const pack = getCategoryPackConfig(categoryPackId);
+    const categories = pack.categories;
     const result = Object.fromEntries(
-      CATEGORIES.map((category) => [category, false])
+      categories.map(({ key }) => [key, false])
     );
 
-    // Test-only deterministic mode. It is enabled exclusively by the CI
-    // browser test environment and never in production. This lets the E2E
-    // suite exercise room, timing, submission, scoring and navigation flows
-    // without requiring an external AI credential.
     const isE2EMode =
       process.env.E2E_MODE === "true" &&
       process.env.NODE_ENV !== "production";
 
     if (isE2EMode) {
-      for (const category of CATEGORIES) {
-        const answer = normalizeText(source[category]);
-        result[category] = Boolean(
+      for (const category of categories) {
+        const answer = normalizeText(source[category.key]);
+        result[category.key] = Boolean(
           answer && startsWithLetter(answer, letter)
         );
       }
@@ -312,39 +303,46 @@ function createAnswerValidator(openai, options = {}) {
 
     const pending = [];
 
-    for (const category of CATEGORIES) {
-      const answer = normalizeText(source[category]);
+    for (const category of categories) {
+      const answer = normalizeText(source[category.key]);
 
       if (!answer || !startsWithLetter(answer, letter)) {
         continue;
       }
 
-      if (isE2EMode) {
-        result[category] = true;
+      if (
+        pack.id === "classic" &&
+        fallbackValidate(category.key, answer)
+      ) {
+        result[category.key] = true;
         continue;
       }
 
-      // Common, unambiguous answers are accepted deterministically. This is
-      // deliberately checked before AI so an AI false-negative cannot turn an
-      // obvious game answer into a wrong answer.
-      if (fallbackValidate(category, answer)) {
-        result[category] = true;
-        continue;
-      }
+      const key =
+        pack.id +
+        "|" +
+        category.key +
+        "|" +
+        normalizeKey(letter) +
+        "|" +
+        normalizeKey(answer);
 
-      const key = category + "|" + normalizeKey(letter) + "|" + normalizeKey(answer);
       const cached = cacheGet(key);
 
       if (cached !== undefined) {
-        result[category] = cached;
+        result[category.key] = cached;
       } else {
-        pending.push({ category, answer, key });
+        pending.push({
+          category: category.key,
+          label: category.label,
+          definition: category.semantic,
+          answer,
+          key,
+        });
       }
     }
 
-    if (!pending.length) {
-      return result;
-    }
+    if (!pending.length) return result;
 
     try {
       await aiValidate(result, pending, letter);
@@ -352,18 +350,28 @@ function createAnswerValidator(openai, options = {}) {
     } catch (error) {
       console.error("AI validation unavailable:", error.message);
 
-      // Never award an unknown answer just because AI failed. The deterministic
-      // dictionary remains the safety net for common valid answers.
       for (const item of pending) {
-        result[item.category] = fallbackValidate(item.category, item.answer);
+        result[item.category] =
+          pack.id === "classic" &&
+          fallbackValidate(item.category, item.answer);
       }
 
       return result;
     }
   }
 
-  async function validateAnswer(answer, category, letter) {
-    const result = await validateAnswers({ [category]: answer }, letter);
+  async function validateAnswer(
+    answer,
+    category,
+    letter,
+    categoryPackId = "classic"
+  ) {
+    const result = await validateAnswers(
+      { [category]: answer },
+      letter,
+      categoryPackId
+    );
+
     return Boolean(result[category]);
   }
 
