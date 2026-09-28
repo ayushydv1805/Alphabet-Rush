@@ -121,6 +121,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
         : 10;
       const selectedMode = normalizeGameMode(gameMode);
       const selectedCategoryPack = normalizeCategoryPack(categoryPack);
+      const selectedPack = getCategoryPackConfig(selectedCategoryPack);
 
       const verifiedIdentity = verifyIdentityToken(identityToken);
       const playerId = verifiedIdentity?.playerId || crypto.randomUUID();
@@ -161,9 +162,9 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
         title: player.title,
         rounds: room.rounds,
         gameMode: room.gameMode,
-        categoryPack: pack.id,
-        categoryPackName: pack.name,
-        categories: pack.categories.map(({ key, label, semantic }) => ({
+        categoryPack: selectedPack.id,
+        categoryPackName: selectedPack.name,
+        categories: selectedPack.categories.map(({ key, label, semantic }) => ({
           key,
           label,
           semantic,
