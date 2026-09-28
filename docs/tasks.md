@@ -129,3 +129,23 @@ Completed:
 - Round awards.
 - Final-match XP reward.
 - Profile/cosmetic data synchronized into multiplayer rooms.
+
+## Phase 6 — Product Expansion
+
+Completed:
+- [x] Challenge category packs.
+- [x] Classic pack compatibility for existing rooms.
+- [x] India category pack.
+- [x] Entertainment category pack.
+- [x] Tech category pack.
+- [x] Host selects the challenge pack when creating a room.
+- [x] Pack metadata is synchronized through create, join, resume, round start, round result, rematch and disconnect flows.
+- [x] Server-side AI validation uses the selected pack's category definitions.
+- [x] Classic deterministic fallback remains isolated to the Classic pack.
+- [x] Automated tests for pack configuration and specialized-pack AI validation.
+
+Current Phase 6 focus:
+- [ ] Durable player match history.
+- [ ] Long-term match analytics.
+- [ ] Additional themed category packs.
+- [ ] Ranked matchmaking.
