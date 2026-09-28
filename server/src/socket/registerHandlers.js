@@ -2,12 +2,14 @@ const crypto = require("node:crypto");
 const { createUniqueRoomCode } = require("../utils/roomCode");
 const { getRoom, createRoom, deleteRoom, rooms } = require("../store/rooms");
 const { getGameModeConfig } = require("../game/gameModes");
+const { getCategoryPackConfig } = require("../game/categoryPacks");
 const {
   normalizeRoomCode,
   isValidRoomCode,
   normalizeName,
   normalizeCosmetic,
   normalizeGameMode,
+  normalizeCategoryPack,
   normalizeAnswers,
   isValidAnswerPayload,
 } = require("../utils/payload");
@@ -98,7 +100,14 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
         return;
       }
 
-      const { playerName, rounds, gameMode, profile, identityToken } = payload || {};
+      const {
+        playerName,
+        rounds,
+        gameMode,
+        categoryPack,
+        profile,
+        identityToken,
+      } = payload || {};
       const name = normalizeName(playerName);
 
       if (!name) {
@@ -111,6 +120,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
         ? Number(rounds)
         : 10;
       const selectedMode = normalizeGameMode(gameMode);
+      const selectedCategoryPack = normalizeCategoryPack(categoryPack);
 
       const verifiedIdentity = verifyIdentityToken(identityToken);
       const playerId = verifiedIdentity?.playerId || crypto.randomUUID();
@@ -123,6 +133,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
         hostPlayerId: player.playerId,
         rounds: selectedRounds,
         gameMode: selectedMode,
+        categoryPack: selectedCategoryPack,
         currentRound: 0,
         currentLetter: null,
         roundStartedAt: null,
@@ -150,6 +161,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
         title: player.title,
         rounds: room.rounds,
         gameMode: room.gameMode,
+        categoryPack: room.categoryPack,
         hostId: room.hostId,
         players: room.players.map(toPlayerSummary),
       });
@@ -223,6 +235,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
           title: existingPlayer.title,
           rounds: room.rounds,
           gameMode: room.gameMode,
+          categoryPack: room.categoryPack,
           hostId: room.hostId,
           hostPlayerId: room.hostPlayerId,
           players: room.players.map(toPlayerSummary),
@@ -246,6 +259,8 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
         avatar: player.avatar,
         title: player.title,
         rounds: room.rounds,
+        gameMode: room.gameMode,
+        categoryPack: room.categoryPack,
         hostId: room.hostId,
         players: room.players.map(toPlayerSummary),
       });
@@ -314,6 +329,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
           title: player.title,
           rounds: room.rounds,
           gameMode: room.gameMode,
+          categoryPack: room.categoryPack,
           hostId: room.hostId,
           players: room.players.map(toPlayerSummary),
         });
@@ -329,6 +345,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
         totalRounds: room.rounds,
         totalPlayers: room.players.length,
         gameMode: room.gameMode,
+        categoryPack: room.categoryPack,
         roundId: room.roundId,
         modeName: mode.name,
         modeIcon: mode.icon,
@@ -381,6 +398,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
           winnerName: winners[0]?.name || "No winner",
           winningScore: maxScore,
           gameMode: room.gameMode,
+          categoryPack: room.categoryPack,
           players: ranked.map(toPlayerSummary),
         });
         return;
@@ -464,7 +482,11 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
       let validation;
 
       try {
-        validation = await validateAnswers(safeAnswers, letter);
+        validation = await validateAnswers(
+          safeAnswers,
+          letter,
+          currentRoom.categoryPack
+        );
       } catch (error) {
         logError("answer_validation_error", error, { roomCode: code, playerId: socket.id });
         validation = {
@@ -613,6 +635,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
           winnerName: winners[0]?.name || "No winner",
           winningScore: maxScore,
           gameMode: room.gameMode,
+          categoryPack: room.categoryPack,
           players: players.map(toPlayerSummary),
         });
 
@@ -739,6 +762,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
             gameId: currentRoom.gameId,
             rounds: currentRoom.rounds,
             gameMode: currentRoom.gameMode,
+            categoryPack: currentRoom.categoryPack,
             hostId: currentRoom.hostId,
             players: currentRoom.players.map(toPlayerSummary),
           });
