@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import PlayerList from "../components/rooms/PlayerList";
+import { getCategoryPack } from "../constants/categoryPacks";
 import { playGameSound } from "../services/sound";
 import {
   getAvatar,
@@ -44,6 +45,7 @@ function Leaderboard() {
   const projectedXp = currentProfile.xp + gameXp;
   const projectedLevel = getLevelFromXp(projectedXp);
   const avatar = me?.avatar || getAvatar(currentProfile.avatarId).icon;
+  const categoryPack = getCategoryPack(gameData?.categoryPack);
 
   useEffect(() => {
     if (!gameData?.gameId || !me) return;
@@ -83,7 +85,7 @@ function Leaderboard() {
           <p className="home-eyebrow">FINAL RESULTS</p>
           <h1>Game Complete</h1>
           <p className="room-subtitle">
-            After {gameData.totalRounds || "all"} rounds, the final scores are in.
+            {categoryPack.icon} {categoryPack.name} · After {gameData.totalRounds || "all"} rounds, the final scores are in.
           </p>
         </div>
 
