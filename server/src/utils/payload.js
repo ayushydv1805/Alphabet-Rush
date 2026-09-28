@@ -1,4 +1,5 @@
 const { getGameModeConfig } = require("../game/gameModes");
+const { getCategoryPackConfig } = require("../game/categoryPacks");
 
 const ROOM_CODE_PATTERN = /^[A-Z0-9]{6}$/;
 const CATEGORIES = ["name", "place", "thing", "animal", "food"];
@@ -31,6 +32,12 @@ function normalizeGameMode(value) {
   ).id;
 }
 
+function normalizeCategoryPack(value) {
+  return getCategoryPackConfig(
+    typeof value === "string" ? value.trim().toLowerCase() : ""
+  ).id;
+}
+
 function normalizeAnswers(value) {
   const source =
     value && typeof value === "object" && !Array.isArray(value) ? value : {};
@@ -59,6 +66,7 @@ module.exports = {
   normalizeName,
   normalizeCosmetic,
   normalizeGameMode,
+  normalizeCategoryPack,
   normalizeAnswers,
   isValidAnswerPayload,
 };
