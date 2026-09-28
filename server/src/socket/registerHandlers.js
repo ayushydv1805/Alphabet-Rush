@@ -14,7 +14,11 @@ const {
 const { createRateLimiter } = require("../utils/rateLimiter");
 const { logEvent, logError } = require("../utils/logger");
 const { createIdentityToken, verifyIdentityToken } = require("../auth/identity");
-const { persistRoom, deletePersistedRoom } = require("../store/roomPersistence");
+const {
+  persistRoom,
+  deletePersistedRoom,
+  loadPersistedRoom,
+} = require("../store/roomPersistence");
 
 const MAX_PLAYERS = 10;
 const ALLOWED_ROUNDS = [5, 10, 15, 20];
@@ -160,7 +164,8 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
       const { roomCode, playerName, profile, identityToken } = payload || {};
       const code = normalizeRoomCode(roomCode);
       const name = normalizeName(playerName);
-      const room = getRoom(code);
+      let room = getRoom(code);
+      if (!room) room = await loadPersistedRoom(code);
 
       if (!isValidRoomCode(code)) {
         socket.emit("joinError", "Room code must be exactly 6 characters.");
@@ -404,7 +409,8 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
       if (!actionLimiter.isAllowed(socket.id + ":start")) return;
 
       const code = normalizeRoomCode(roomCode);
-      const room = getRoom(code);
+      let room = getRoom(code);
+      if (!room) room = await loadPersistedRoom(code);
 
       if (!room) {
         socket.emit("actionError", "Room not found.");
@@ -429,7 +435,8 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
 
       const { roomCode, answers, roundId } = payload || {};
       const code = normalizeRoomCode(roomCode);
-      const room = getRoom(code);
+      let room = getRoom(code);
+      if (!room) room = await loadPersistedRoom(code);
       if (!room || room.roundEnded || room.roundExpired) return;
 
       if (!roundId || roundId !== room.roundId) {
