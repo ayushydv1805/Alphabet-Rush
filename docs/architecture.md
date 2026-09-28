@@ -63,7 +63,7 @@ Reusable UI grouped into common, game and rooms areas.
 
 ### hooks/
 
-Reusable React behavior, currently including the theme hook.
+Reusable React behavior, currently including theme, identity/session and connection-status hooks.
 
 ### services/
 
@@ -71,7 +71,7 @@ External integrations. Socket.IO is isolated here.
 
 ### constants/
 
-Shared gameplay configuration.
+Shared gameplay and challenge-pack configuration.
 
 ### styles/
 
@@ -104,7 +104,7 @@ Owns starting rounds, resetting per-round data, timers, ending rounds, broadcast
 
 ### server/src/services/answerValidator.js
 
-Keeps OpenAI-specific validation code outside the socket event layer. The validator performs an authoritative starting-letter check first, accepts known unambiguous answers from a small deterministic safety dictionary, then uses OpenAI Structured Outputs for unknown answers. A second, more permissive AI review runs only when the first AI pass rejects an unknown answer, reducing false negatives while keeping the common path fast. Positive validations are cached in memory.
+Keeps OpenAI-specific validation code outside the socket event layer. The validator performs an authoritative starting-letter check first, uses the Classic-only deterministic safety dictionary for common answers, and otherwise validates against the selected challenge pack's category definitions with OpenAI Structured Outputs. A second, more permissive AI review runs only when the first AI pass rejects an unknown answer, reducing false negatives while keeping the common path fast. Positive validations are cached in memory.
 
 ### server/src/store/rooms.js
 
@@ -184,3 +184,12 @@ For larger production deployments:
 4. Add database-backed durable room history with Render Postgres.
 5. Add structured logging and monitoring.
 6. Add automated integration and browser E2E tests.
+
+## 8. Challenge Pack Configuration
+
+The client and server share the same pack identifiers:
+`classic`, `india`, `entertainment`, `tech`.
+
+The host selects a pack during room creation. The selected pack is stored with the room snapshot and broadcast with room, round and result events. The server uses the pack configuration to build the AI validation prompt, so a category such as `Movie` is not accidentally judged using the Classic `Place` definition.
+
+Legacy rooms without a stored pack identifier safely resolve to `classic`.
