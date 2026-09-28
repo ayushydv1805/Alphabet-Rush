@@ -2,7 +2,6 @@ const crypto = require("node:crypto");
 const { createUniqueRoomCode } = require("../utils/roomCode");
 const { getRoom, createRoom, deleteRoom, rooms } = require("../store/rooms");
 const { getGameModeConfig } = require("../game/gameModes");
-const { getCategoryPackConfig } = require("../game/categoryPacks");
 const {
   normalizeRoomCode,
   isValidRoomCode,
