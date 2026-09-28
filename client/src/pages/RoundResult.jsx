@@ -83,6 +83,11 @@ function RoundResult() {
 
   const players = resultData?.players || [];
   const me = players.find((player) => player.id === socket.id);
+  const mode =
+    GAME_MODES.find((item) => item.id === resultData?.gameMode) ||
+    GAME_MODES[0];
+  const categoryPack = getCategoryPack(resultData?.categoryPack);
+  const fields = categoryPack.categories;
 
   useEffect(() => {
     if (!me || !resultData?.gameId) return;
@@ -111,6 +116,7 @@ function RoundResult() {
     resultData?.currentRound,
     resultData?.roundStartedAt,
     resultData?.winnerIds,
+    fields,
   ]);
 
   if (!resultData) {
@@ -166,9 +172,6 @@ function RoundResult() {
     correctCount
   );
   const currentProfile = getProfile();
-  const mode = GAME_MODES.find((item) => item.id === resultData.gameMode) || GAME_MODES[0];
-  const categoryPack = getCategoryPack(resultData.categoryPack);
-  const fields = categoryPack.categories;
   const xpAfterRound = currentProfile.xp + xpGained;
   const levelAfterRound = getLevelFromXp(xpAfterRound);
   const awards = getRoundAwards(me, winnerIds, submitSeconds, fields.length);
