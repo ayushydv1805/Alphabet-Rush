@@ -1,10 +1,14 @@
 const { createClient } = require("redis");
+const { Pool } = require("pg");
 const { ROOM_TTL_MS, rooms } = require("./rooms");
 
 const PREFIX = "alphabet-rush:room:";
 const TTL_SECONDS = Math.ceil(ROOM_TTL_MS / 1000);
-let client = null;
-let connected = false;
+
+let redisClient = null;
+let redisConnected = false;
+let dbPool = null;
+let dbConnected = false;
 
 function key(roomCode) {
   return PREFIX + roomCode;
@@ -13,6 +17,7 @@ function key(roomCode) {
 function serializeRoom(room) {
   return {
     ...room,
+    updatedAt: Date.now(),
     roundTimer: null,
     players: (room.players || []).map((player) => ({
       ...player,
@@ -26,7 +31,8 @@ function restoreRoom(rawRoom) {
     ...rawRoom,
     roundTimer: null,
     pendingValidations: 0,
-    lastActivityAt: Date.now(),
+    lastActivityAt: rawRoom.lastActivityAt || Date.now(),
+    updatedAt: rawRoom.updatedAt || Date.now(),
     recoveredFromRestart: false,
   };
 
@@ -36,8 +42,8 @@ function restoreRoom(rawRoom) {
     playerId: player.playerId || player.id,
   }));
 
-  // An in-flight round cannot safely resume its old timer after a process
-  // restart. Preserve the session and scores and close that stale round.
+  // A round in progress cannot safely resume its old timer after a process
+  // restart. Preserve the room and scores, but close that stale round.
   if (room.currentRound > 0 && !room.roundEnded) {
     room.roundEnded = true;
     room.roundExpired = true;
@@ -47,12 +53,66 @@ function restoreRoom(rawRoom) {
   return room;
 }
 
-async function initRoomPersistence() {
+async function initPostgresPersistence() {
+  if (!process.env.DATABASE_URL) return false;
+
+  dbPool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl:
+      process.env.NODE_ENV === "production"
+        ? { rejectUnauthorized: false }
+        : undefined,
+    max: 5,
+    idleTimeoutMillis: 30_000,
+    connectionTimeoutMillis: 8_000,
+  });
+
+  dbPool.on("error", (error) => {
+    dbConnected = false;
+    console.error(
+      JSON.stringify({
+        event: "postgres_persistence_error",
+        message: error.message,
+      })
+    );
+  });
+
+  const client = await dbPool.connect();
+
+  try {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS alphabet_rush_rooms (
+        room_code TEXT PRIMARY KEY,
+        game_id TEXT NOT NULL,
+        payload JSONB NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        expires_at TIMESTAMPTZ NOT NULL
+      )
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS alphabet_rush_rooms_expires_idx
+      ON alphabet_rush_rooms (expires_at)
+    `);
+
+    await client.query(
+      "DELETE FROM alphabet_rush_rooms WHERE expires_at <= NOW()"
+    );
+
+    dbConnected = true;
+  } finally {
+    client.release();
+  }
+
+  return true;
+}
+
+async function initRedisPersistence() {
   if (!process.env.REDIS_URL) return false;
 
-  client = createClient({ url: process.env.REDIS_URL });
-  client.on("error", (error) => {
-    connected = false;
+  redisClient = createClient({ url: process.env.REDIS_URL });
+  redisClient.on("error", (error) => {
+    redisConnected = false;
     console.error(
       JSON.stringify({
         event: "redis_persistence_error",
@@ -61,28 +121,97 @@ async function initRoomPersistence() {
     );
   });
 
-  await client.connect();
-  connected = true;
+  await redisClient.connect();
+  redisConnected = true;
   return true;
 }
 
-async function hydrateRooms() {
-  if (!connected || !client) return 0;
+async function initRoomPersistence() {
+  const [dbResult, redisResult] = await Promise.allSettled([
+    initPostgresPersistence(),
+    initRedisPersistence(),
+  ]);
+
+  if (dbResult.status === "rejected") {
+    console.error(
+      JSON.stringify({
+        event: "postgres_persistence_startup_error",
+        message: dbResult.reason?.message || "Unknown error",
+      })
+    );
+    dbConnected = false;
+  }
+
+  if (redisResult.status === "rejected") {
+    console.error(
+      JSON.stringify({
+        event: "redis_persistence_startup_error",
+        message: redisResult.reason?.message || "Unknown error",
+      })
+    );
+    redisConnected = false;
+  }
+
+  return dbConnected || redisConnected;
+}
+
+async function hydrateFromPostgres() {
+  if (!dbConnected || !dbPool) return 0;
+
+  const result = await dbPool.query(
+    "SELECT room_code, payload, EXTRACT(EPOCH FROM updated_at) * 1000 AS updated_at_ms FROM alphabet_rush_rooms WHERE expires_at > NOW()"
+  );
 
   let restored = 0;
 
-  const keys = await client.keys(PREFIX + "*");
+  for (const row of result.rows) {
+    try {
+      const rawRoom = {
+        ...row.payload,
+        updatedAt: Number(row.updated_at_ms) || row.payload.updatedAt,
+      };
+      const room = restoreRoom(rawRoom);
+      room.roomCode = row.room_code;
+      rooms[row.room_code] = room;
+      restored += 1;
+    } catch (error) {
+      console.error(
+        JSON.stringify({
+          event: "postgres_room_restore_error",
+          roomCode: row.room_code,
+          message: error.message,
+        })
+      );
+    }
+  }
+
+  return restored;
+}
+
+async function hydrateFromRedis() {
+  if (!redisConnected || !redisClient) return 0;
+
+  let restored = 0;
+  const keys = await redisClient.keys(PREFIX + "*");
 
   for (const scanKey of keys) {
-    const raw = await client.get(scanKey);
+    const raw = await redisClient.get(scanKey);
     if (!raw) continue;
 
+    const roomCode = scanKey.slice(PREFIX.length);
+
     try {
-      const room = restoreRoom(JSON.parse(raw));
-      const roomCode = scanKey.slice(PREFIX.length);
-      room.roomCode = roomCode;
-      rooms[roomCode] = room;
-      restored += 1;
+      const candidate = restoreRoom(JSON.parse(raw));
+      candidate.roomCode = roomCode;
+
+      const current = rooms[roomCode];
+      const candidateUpdated = Number(candidate.updatedAt) || 0;
+      const currentUpdated = Number(current?.updatedAt) || 0;
+
+      if (!current || candidateUpdated >= currentUpdated) {
+        rooms[roomCode] = candidate;
+        restored += current ? 0 : 1;
+      }
     } catch (error) {
       console.error(
         JSON.stringify({
@@ -97,51 +226,138 @@ async function hydrateRooms() {
   return restored;
 }
 
-async function persistRoom(room) {
-  if (!connected || !client || !room) return false;
-  const roomCode = room.roomCode;
-  if (!roomCode) return false;
+async function hydrateRooms() {
+  const [dbResult, redisResult] = await Promise.allSettled([
+    hydrateFromPostgres(),
+    hydrateFromRedis(),
+  ]);
 
-  try {
-    await client.setEx(
-      key(roomCode),
-      TTL_SECONDS,
-      JSON.stringify(serializeRoom(room))
-    );
-    return true;
-  } catch (error) {
+  if (dbResult.status === "rejected") {
     console.error(
       JSON.stringify({
-        event: "redis_room_save_error",
-        roomCode,
-        message: error.message,
+        event: "postgres_room_hydration_error",
+        message: dbResult.reason?.message || "Unknown error",
+      })
+    );
+  }
+
+  if (redisResult.status === "rejected") {
+    console.error(
+      JSON.stringify({
+        event: "redis_room_hydration_error",
+        message: redisResult.reason?.message || "Unknown error",
+      })
+    );
+  }
+
+  return (dbResult.status === "fulfilled" ? dbResult.value : 0) +
+    (redisResult.status === "fulfilled" ? redisResult.value : 0);
+}
+
+async function persistToPostgres(room) {
+  if (!dbConnected || !dbPool || !room?.roomCode) return false;
+
+  const serialized = serializeRoom(room);
+
+  await dbPool.query(
+    `
+      INSERT INTO alphabet_rush_rooms (
+        room_code,
+        game_id,
+        payload,
+        updated_at,
+        expires_at
+      )
+      VALUES (
+        $1,
+        $2,
+        $3::jsonb,
+        NOW(),
+        NOW() + INTERVAL '2 hours'
+      )
+      ON CONFLICT (room_code)
+      DO UPDATE SET
+        game_id = EXCLUDED.game_id,
+        payload = EXCLUDED.payload,
+        updated_at = NOW(),
+        expires_at = EXCLUDED.expires_at
+    `,
+    [room.roomCode, room.gameId || "", JSON.stringify(serialized)]
+  );
+
+  return true;
+}
+
+async function persistToRedis(room) {
+  if (!redisConnected || !redisClient || !room?.roomCode) return false;
+
+  await redisClient.setEx(
+    key(room.roomCode),
+    TTL_SECONDS,
+    JSON.stringify(serializeRoom(room))
+  );
+
+  return true;
+}
+
+async function persistRoom(room) {
+  if (!room?.roomCode) return false;
+
+  const results = await Promise.allSettled([
+    persistToPostgres(room),
+    persistToRedis(room),
+  ]);
+
+  if (results.every((result) => result.status === "rejected")) {
+    console.error(
+      JSON.stringify({
+        event: "room_persistence_failed",
+        roomCode: room.roomCode,
+        errors: results.map((result) => result.reason?.message || "Unknown error"),
       })
     );
     return false;
   }
+
+  return results.some(
+    (result) => result.status === "fulfilled" && result.value === true
+  );
 }
 
 async function deletePersistedRoom(roomCode) {
-  if (!connected || !client || !roomCode) return;
-  try {
-    await client.del(key(roomCode));
-  } catch (error) {
-    console.error(
-      JSON.stringify({
-        event: "redis_room_delete_error",
-        roomCode,
-        message: error.message,
-      })
-    );
-  }
+  if (!roomCode) return;
+
+  await Promise.allSettled([
+    dbConnected && dbPool
+      ? dbPool.query("DELETE FROM alphabet_rush_rooms WHERE room_code = $1", [
+          roomCode,
+        ])
+      : Promise.resolve(),
+    redisConnected && redisClient
+      ? redisClient.del(key(roomCode))
+      : Promise.resolve(),
+  ]);
 }
 
 async function closeRoomPersistence() {
-  connected = false;
-  if (client) {
-    await client.quit().catch(() => {});
-    client = null;
-  }
+  redisConnected = false;
+  dbConnected = false;
+
+  await Promise.allSettled([
+    redisClient?.quit(),
+    dbPool?.end(),
+  ]);
+
+  redisClient = null;
+  dbPool = null;
+}
+
+function getPersistenceStatus() {
+  return {
+    postgres: dbConnected,
+    redis: redisConnected,
+    durable: dbConnected || redisConnected,
+  };
 }
 
 module.exports = {
@@ -150,4 +366,7 @@ module.exports = {
   persistRoom,
   deletePersistedRoom,
   closeRoomPersistence,
+  getPersistenceStatus,
+  serializeRoom,
+  restoreRoom,
 };
