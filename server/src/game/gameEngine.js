@@ -1,5 +1,6 @@
 const { getRoom } = require("../store/rooms");
 const { getGameModeConfig, getRoundLetter } = require("./gameModes");
+const { getCategoryPackConfig } = require("./categoryPacks");
 const { logEvent } = require("../utils/logger");
 const { persistRoom } = require("../store/roomPersistence");
 
@@ -69,6 +70,7 @@ function createGameEngine({ io }) {
     room.winnerNames = roundWinners.winnerNames;
     room.winnerId = room.winnerIds[0] || null;
     const mode = getGameModeConfig(room.gameMode);
+    const pack = getCategoryPackConfig(room.categoryPack);
 
     io.to(roomCode).emit("roundEnded", {
       roomCode,
@@ -78,6 +80,13 @@ function createGameEngine({ io }) {
       totalRounds: room.rounds,
       totalPlayers: room.players.length,
       gameMode: room.gameMode,
+      categoryPack: pack.id,
+      categoryPackName: pack.name,
+      categories: pack.categories.map(({ key, label, semantic }) => ({
+        key,
+        label,
+        semantic,
+      })),
       roundId: room.roundId,
       modeName: mode.name,
       modeIcon: mode.icon,
@@ -142,6 +151,7 @@ function createGameEngine({ io }) {
 
     room.currentRound = roundNumber;
     const mode = getGameModeConfig(room.gameMode);
+    const pack = getCategoryPackConfig(room.categoryPack);
     room.roundId = require("node:crypto").randomUUID();
     room.currentLetter = getRoundLetter(room.gameMode);
     room.roundStartedAt = Date.now();
@@ -181,6 +191,13 @@ function createGameEngine({ io }) {
       totalRounds: room.rounds,
       totalPlayers: room.players.length,
       gameMode: room.gameMode,
+      categoryPack: pack.id,
+      categoryPackName: pack.name,
+      categories: pack.categories.map(({ key, label, semantic }) => ({
+        key,
+        label,
+        semantic,
+      })),
       roundId: room.roundId,
       modeName: mode.name,
       modeIcon: mode.icon,
