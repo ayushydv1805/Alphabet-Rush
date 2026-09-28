@@ -4,6 +4,7 @@ import socket from "../services/socket";
 import PlayerList from "../components/rooms/PlayerList";
 import RoomCode from "../components/rooms/RoomCode";
 import { GAME_MODES, MAX_PLAYERS } from "../constants/game";
+import { getCategoryPack } from "../constants/categoryPacks";
 import { clearActiveSession } from "../services/session";
 
 function WaitingRoom() {
@@ -43,6 +44,7 @@ function WaitingRoom() {
   const mode =
     GAME_MODES.find((item) => item.id === roomData.gameMode) ||
     GAME_MODES[0];
+  const pack = getCategoryPack(roomData.categoryPack);
   const isHost = hostId === socket.id;
   const connectedPlayers = players.filter(
     (player) => player.connected !== false
@@ -74,6 +76,9 @@ function WaitingRoom() {
           </div>
           <div className="waiting-mode-pill">
             {mode.icon} {mode.name}
+          </div>
+          <div className="waiting-pack-pill">
+            {pack.icon} {pack.name} Pack
           </div>
           <div className="waiting-round-pill">
             🎯 {roomData.rounds} rounds
