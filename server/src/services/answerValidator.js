@@ -291,6 +291,21 @@ function createAnswerValidator(openai, options = {}) {
     const result = Object.fromEntries(
       CATEGORIES.map((category) => [category, false])
     );
+
+    // Test-only deterministic mode. It is enabled exclusively by the CI
+    // browser test environment and never in production. This lets the E2E
+    // suite exercise room, timing, submission, scoring and navigation flows
+    // without requiring an external AI credential.
+    if (process.env.E2E_MODE === "true") {
+      for (const category of CATEGORIES) {
+        const answer = normalizeText(source[category]);
+        result[category] = Boolean(
+          answer && startsWithLetter(answer, letter)
+        );
+      }
+      return result;
+    }
+
     const pending = [];
 
     for (const category of CATEGORIES) {
