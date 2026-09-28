@@ -2,7 +2,8 @@ import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import PlayerList from "../components/rooms/PlayerList";
 import RoundReveal from "../components/game/RoundReveal";
-import { ANSWER_FIELDS, GAME_MODES } from "../constants/game";
+import { GAME_MODES } from "../constants/game";
+import { getCategoryPack } from "../constants/categoryPacks";
 import { playGameSound } from "../services/sound";
 import {
   getLevelFromXp,
@@ -12,18 +13,18 @@ import {
 } from "../services/profile";
 import socket from "../services/socket";
 
-function getRoundAwards(me, winnerIds, submitSeconds) {
+function getRoundAwards(me, winnerIds, submitSeconds, fieldCount) {
   if (!me) return [];
 
   const awards = [];
 
   const correctCount = me.correctCount ?? Object.values(me.validation || {}).filter(Boolean).length;
 
-  if (correctCount === ANSWER_FIELDS.length) {
+  if (correctCount === fieldCount) {
     awards.push({
       icon: "🎯",
       title: "PERFECT ROUND",
-      text: "All 5 categories were correct.",
+      text: "All " + fieldCount + " categories were correct.",
     });
   } else if (correctCount >= 4) {
     awards.push({
@@ -166,9 +167,11 @@ function RoundResult() {
   );
   const currentProfile = getProfile();
   const mode = GAME_MODES.find((item) => item.id === resultData.gameMode) || GAME_MODES[0];
+  const categoryPack = getCategoryPack(resultData.categoryPack);
+  const fields = categoryPack.categories;
   const xpAfterRound = currentProfile.xp + xpGained;
   const levelAfterRound = getLevelFromXp(xpAfterRound);
-  const awards = getRoundAwards(me, winnerIds, submitSeconds);
+  const awards = getRoundAwards(me, winnerIds, submitSeconds, fields.length);
 
   return (
     <main className="room-container">
@@ -198,7 +201,7 @@ function RoundResult() {
             </strong>
             {resultData.winningRoundPoints > 0 && (
               <span>
-                {resultData.winningRoundPoints} / {ANSWER_FIELDS.length} correct
+                {resultData.winningRoundPoints} / {fields.length} correct
               </span>
             )}
           </div>
@@ -272,12 +275,12 @@ function RoundResult() {
             <div className="section-title">
               <h2>Your answers</h2>
               <span>
-                {me.correctCount ?? Object.values(me.validation || {}).filter(Boolean).length} / {ANSWER_FIELDS.length} correct · +{me.roundPoints || 0} points
+                {me.correctCount ?? Object.values(me.validation || {}).filter(Boolean).length} / {fields.length} correct · +{me.roundPoints || 0} points
               </span>
             </div>
 
             <div className="answer-review-grid">
-              {ANSWER_FIELDS.map((field, index) => {
+              {fields.map((field, index) => {
                 const value = me.answers?.[field.name] || "";
                 const isCorrect = Boolean(me.validation?.[field.name]);
 
@@ -316,7 +319,7 @@ function RoundResult() {
 
         <RoundReveal
           players={players}
-          fields={ANSWER_FIELDS}
+          fields={fields}
           currentPlayerId={socket.id}
         />
 
