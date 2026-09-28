@@ -226,6 +226,75 @@ async function hydrateFromRedis() {
   return restored;
 }
 
+async function loadPersistedRoom(roomCode) {
+  if (!roomCode) return null;
+
+  const candidates = [];
+
+  if (redisConnected && redisClient) {
+    try {
+      const raw = await redisClient.get(key(roomCode));
+      if (raw) {
+        candidates.push({
+          source: "redis",
+          room: restoreRoom(JSON.parse(raw)),
+        });
+      }
+    } catch (error) {
+      console.error(
+        JSON.stringify({
+          event: "redis_room_load_error",
+          roomCode,
+          message: error.message,
+        })
+      );
+    }
+  }
+
+  if (dbConnected && dbPool) {
+    try {
+      const result = await dbPool.query(
+        "SELECT room_code, payload, EXTRACT(EPOCH FROM updated_at) * 1000 AS updated_at_ms FROM alphabet_rush_rooms WHERE room_code = $1 AND expires_at > NOW() LIMIT 1",
+        [roomCode]
+      );
+
+      const row = result.rows[0];
+      if (row) {
+        candidates.push({
+          source: "postgres",
+          room: restoreRoom({
+            ...row.payload,
+            updatedAt: Number(row.updated_at_ms) || row.payload.updatedAt,
+          }),
+        });
+      }
+    } catch (error) {
+      console.error(
+        JSON.stringify({
+          event: "postgres_room_load_error",
+          roomCode,
+          message: error.message,
+        })
+      );
+    }
+  }
+
+  if (!candidates.length) return null;
+
+  const selected = candidates.reduce((latest, candidate) => {
+    if (!latest) return candidate;
+    return (Number(candidate.room.updatedAt) || 0) >
+      (Number(latest.room.updatedAt) || 0)
+      ? candidate
+      : latest;
+  }, null);
+
+  selected.room.roomCode = roomCode;
+  rooms[roomCode] = selected.room;
+
+  return selected.room;
+}
+
 async function hydrateRooms() {
   const [dbResult, redisResult] = await Promise.allSettled([
     hydrateFromPostgres(),
@@ -363,6 +432,7 @@ function getPersistenceStatus() {
 module.exports = {
   initRoomPersistence,
   hydrateRooms,
+  loadPersistedRoom,
   persistRoom,
   deletePersistedRoom,
   closeRoomPersistence,
