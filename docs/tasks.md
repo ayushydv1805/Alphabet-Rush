@@ -111,7 +111,7 @@ A task is complete when:
 
 ## 6. Testing Status
 
-The backend now has automated coverage for answer validation, game modes, game-engine lifecycle behavior, payload normalization, rate limiting, structured logging, room cleanup and Socket.IO handler flows.
+The backend now has automated coverage for answer validation, game modes, game-engine lifecycle behavior, payload normalization, rate limiting, structured logging, room cleanup and Socket.IO handler flows. Browser E2E coverage also exercises the room → game → submission → results flow with a CI-only deterministic validator mode.
 
 Render now has an attached Postgres database and Key Value resource. The server creates and maintains the room snapshot table automatically at startup and persists every important room lifecycle change to Postgres plus Redis. The remaining product-level work is richer durable user accounts and long-term match analytics.
 

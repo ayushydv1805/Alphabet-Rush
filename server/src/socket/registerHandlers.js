@@ -507,7 +507,6 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
       currentPlayer.allCorrect = correctCount === 5;
 
       currentPlayer.score += currentPlayer.roundPoints;
-      persistRoom(currentRoom);
 
       if (correctCount === 5) {
         currentPlayer.currentStreak += 1;
@@ -519,6 +518,8 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
       } else {
         currentPlayer.currentStreak = 0;
       }
+
+      void persistRoom(currentRoom);
 
       logEvent("answer_validation_completed", { roomCode: code, playerId: currentPlayer.id, roundId: currentRoom.roundId, correctCount, points: currentPlayer.roundPoints });
       socket.emit("submissionValidated", {
@@ -550,7 +551,6 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
         currentRoom.pendingValidations === 0
       ) {
         endRound(roomCode, "all-submitted");
-        persistRoom(currentRoom);
       } else if (
         !currentRoom.roundEnded &&
         currentRoom.roundExpired &&

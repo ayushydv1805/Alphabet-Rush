@@ -9,6 +9,7 @@ let redisClient = null;
 let redisConnected = false;
 let dbPool = null;
 let dbConnected = false;
+const persistenceChains = new Map();
 
 function key(roomCode) {
   return PREFIX + roomCode;
@@ -369,20 +370,22 @@ async function persistToRedis(room) {
   return true;
 }
 
-async function persistRoom(room) {
-  if (!room?.roomCode) return false;
+async function persistSnapshot(snapshot) {
+  if (!snapshot?.roomCode) return false;
 
   const results = await Promise.allSettled([
-    persistToPostgres(room),
-    persistToRedis(room),
+    persistToPostgres(snapshot),
+    persistToRedis(snapshot),
   ]);
 
   if (results.every((result) => result.status === "rejected")) {
     console.error(
       JSON.stringify({
         event: "room_persistence_failed",
-        roomCode: room.roomCode,
-        errors: results.map((result) => result.reason?.message || "Unknown error"),
+        roomCode: snapshot.roomCode,
+        errors: results.map(
+          (result) => result.reason?.message || "Unknown error"
+        ),
       })
     );
     return false;
@@ -393,8 +396,33 @@ async function persistRoom(room) {
   );
 }
 
+function persistRoom(room) {
+  if (!room?.roomCode) return Promise.resolve(false);
+
+  const snapshot = serializeRoom(room);
+  const roomCode = snapshot.roomCode;
+  const previous = persistenceChains.get(roomCode) || Promise.resolve();
+
+  const next = previous
+    .catch(() => {})
+    .then(() => persistSnapshot(snapshot))
+    .finally(() => {
+      if (persistenceChains.get(roomCode) === next) {
+        persistenceChains.delete(roomCode);
+      }
+    });
+
+  persistenceChains.set(roomCode, next);
+  return next;
+}
+
 async function deletePersistedRoom(roomCode) {
   if (!roomCode) return;
+
+  const pending = persistenceChains.get(roomCode);
+  if (pending) {
+    await pending.catch(() => {});
+  }
 
   await Promise.allSettled([
     dbConnected && dbPool
@@ -406,9 +434,16 @@ async function deletePersistedRoom(roomCode) {
       ? redisClient.del(key(roomCode))
       : Promise.resolve(),
   ]);
+
+  persistenceChains.delete(roomCode);
 }
 
 async function closeRoomPersistence() {
+  for (const pending of persistenceChains.values()) {
+    await pending.catch(() => {});
+  }
+  persistenceChains.clear();
+
   redisConnected = false;
   dbConnected = false;
 
@@ -426,6 +461,7 @@ function getPersistenceStatus() {
     postgres: dbConnected,
     redis: redisConnected,
     durable: dbConnected || redisConnected,
+    queuedWrites: persistenceChains.size,
   };
 }
 

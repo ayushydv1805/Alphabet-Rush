@@ -6,7 +6,11 @@ function ActionFeedback() {
 
   useEffect(() => {
     const handleError = (nextMessage) => {
-      setMessage(typeof nextMessage === "string" ? nextMessage : "Something went wrong.");
+      setMessage(
+        typeof nextMessage === "string"
+          ? nextMessage
+          : "Something went wrong."
+      );
     };
 
     socket.on("actionError", handleError);
@@ -24,9 +28,13 @@ function ActionFeedback() {
 
   return (
     <div className="action-feedback" role="alert" aria-live="assertive">
-      <span aria-hidden="true">⚠️</span>
+      <span className="action-feedback-icon" aria-hidden="true">⚠️</span>
       <span>{message}</span>
-      <button type="button" onClick={() => setMessage("")} aria-label="Dismiss message">
+      <button
+        type="button"
+        onClick={() => setMessage("")}
+        aria-label="Dismiss message"
+      >
         ×
       </button>
     </div>

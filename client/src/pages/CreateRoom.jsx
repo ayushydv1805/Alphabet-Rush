@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import socket from "../services/socket";
 import { getIdentityToken, setIdentityToken } from "../services/identity";
@@ -8,27 +8,56 @@ import { GAME_MODES, ROUND_OPTIONS } from "../constants/game";
 
 function CreateRoom() {
   const navigate = useNavigate();
-  const [playerName, setPlayerName] = useState("");
+  const [playerName, setPlayerName] = useState(() => getProfile().name || "");
   const [rounds, setRounds] = useState(10);
   const [gameMode, setGameMode] = useState("classic");
+  const [error, setError] = useState("");
+  const [creating, setCreating] = useState(false);
 
-  const handleCreateRoom = (event) => {
-    event.preventDefault();
-    const name = playerName.trim();
-
-    if (!name) {
-      alert("Please enter your name");
-      return;
-    }
-
-    socket.once("roomCreated", (roomData) => {
+  useEffect(() => {
+    const handleRoomCreated = (roomData) => {
+      setCreating(false);
+      setError("");
       setIdentityToken(roomData.identityToken);
       saveActiveSession({
         roomCode: roomData.roomCode,
         gameId: roomData.gameId,
       });
       navigate("/waiting-room", { state: roomData });
-    });
+    };
+
+    const handleCreateError = (message) => {
+      setCreating(false);
+      setError(
+        typeof message === "string" ? message : "Unable to create the room."
+      );
+    };
+
+    socket.on("roomCreated", handleRoomCreated);
+    socket.on("createError", handleCreateError);
+
+    return () => {
+      socket.off("roomCreated", handleRoomCreated);
+      socket.off("createError", handleCreateError);
+    };
+  }, [navigate]);
+
+  const handleCreateRoom = (event) => {
+    event.preventDefault();
+    const name = playerName.trim();
+
+    if (!name) {
+      setError("Please enter your name.");
+      return;
+    }
+
+    if (!socket.connected) {
+      setError("Connecting to the game server. Please try again.");
+      return;
+    }
+
+    setError("");
+    setCreating(true);
 
     socket.emit("createRoom", {
       playerName: name,
@@ -40,11 +69,28 @@ function CreateRoom() {
   };
 
   return (
-    <main className="room-container">
+    <main className="room-container form-page">
       <section className="room-card">
+        <div className="form-topbar">
+          <button
+            className="form-back"
+            type="button"
+            onClick={() => navigate("/")}
+          >
+            ← HOME
+          </button>
+          <span className="form-status">PRIVATE MATCH</span>
+        </div>
+
         <div className="room-icon" aria-hidden="true">🎮</div>
+        <p className="page-kicker">BUILD YOUR LOBBY</p>
         <h1>Create Room</h1>
-        <p className="room-subtitle">Create a room and invite your friends.</p>
+        <p className="room-subtitle">
+          Choose the rules, pick your mode, and send the room code to your
+          friends.
+        </p>
+
+        {error ? <div className="form-error" role="alert">{error}</div> : null}
 
         <form onSubmit={handleCreateRoom}>
           <label htmlFor="player-name">YOUR NAME</label>
@@ -53,9 +99,13 @@ function CreateRoom() {
             type="text"
             placeholder="Enter your name"
             value={playerName}
-            onChange={(event) => setPlayerName(event.target.value)}
+            onChange={(event) => {
+              setError("");
+              setPlayerName(event.target.value);
+            }}
             maxLength={20}
             autoComplete="nickname"
+            disabled={creating}
           />
 
           <label htmlFor="round-count">NUMBER OF ROUNDS</label>
@@ -67,6 +117,7 @@ function CreateRoom() {
                 className={rounds === number ? "round selected" : "round"}
                 onClick={() => setRounds(number)}
                 aria-pressed={rounds === number}
+                disabled={creating}
               >
                 {number}
               </button>
@@ -86,6 +137,7 @@ function CreateRoom() {
                 }
                 onClick={() => setGameMode(mode.id)}
                 aria-pressed={gameMode === mode.id}
+                disabled={creating}
               >
                 <span>{mode.icon}</span>
                 <strong>{mode.name}</strong>
@@ -94,14 +146,14 @@ function CreateRoom() {
             ))}
           </div>
 
-          <button className="main-room-btn" type="submit">
-            CREATE ROOM
+          <button className="main-room-btn" type="submit" disabled={creating}>
+            {creating ? "CREATING ROOM..." : "CREATE ROOM"}
           </button>
         </form>
 
-        <button className="back-btn" type="button" onClick={() => navigate("/")}>
-          ← Back
-        </button>
+        <p className="form-footnote">
+          Rooms are private and support up to 10 players.
+        </p>
       </section>
     </main>
   );

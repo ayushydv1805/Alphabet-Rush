@@ -1,7 +1,11 @@
 import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { getIdentityToken } from "../../services/identity";
-import { getActiveSession, saveActiveSession } from "../../services/session";
+import { getIdentityToken, clearIdentityToken } from "../../services/identity";
+import {
+  getActiveSession,
+  saveActiveSession,
+  clearActiveSession,
+} from "../../services/session";
 import socket from "../../services/socket";
 
 const RESUMABLE_PATHS = new Set([
@@ -16,11 +20,14 @@ function ResumeSession() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!RESUMABLE_PATHS.has(location.pathname)) return undefined;
+    if (!RESUMABLE_PATHS.has(location.pathname) || location.state) {
+      return undefined;
+    }
 
     const resume = () => {
       const session = getActiveSession();
       const identityToken = getIdentityToken();
+
       if (!session?.roomCode || !identityToken) return;
 
       socket.emit("resumeRoom", {
@@ -41,33 +48,47 @@ function ResumeSession() {
       }
 
       if (data.identityToken) {
-        localStorage.setItem(
+        window.localStorage.setItem(
           "alphabet-rush-identity-token",
           data.identityToken
         );
       }
 
       if (data.status === "waiting") {
-        navigate("/waiting-room", { state: data });
+        navigate("/waiting-room", { state: data, replace: true });
       } else if (data.status === "active") {
-        navigate("/game", { state: data });
+        navigate("/game", { state: data, replace: true });
       } else if (data.status === "result") {
-        navigate("/round-result", { state: data });
+        navigate("/round-result", { state: data, replace: true });
       } else if (data.status === "finished") {
-        navigate("/leaderboard", { state: data });
+        navigate("/leaderboard", { state: data, replace: true });
+      }
+    };
+
+    const handleResumeError = (message) => {
+      if (
+        typeof message === "string" &&
+        /no longer available|not part of this room|could not be restored/i.test(
+          message
+        )
+      ) {
+        clearActiveSession();
+        clearIdentityToken();
       }
     };
 
     socket.on("roomResumed", handleResumed);
+    socket.on("actionError", handleResumeError);
     socket.on("connect", resume);
 
     if (socket.connected) resume();
 
     return () => {
       socket.off("roomResumed", handleResumed);
+      socket.off("actionError", handleResumeError);
       socket.off("connect", resume);
     };
-  }, [location.pathname, navigate]);
+  }, [location.pathname, location.state, navigate]);
 
   return null;
 }

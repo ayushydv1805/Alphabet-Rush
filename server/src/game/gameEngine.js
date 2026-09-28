@@ -83,7 +83,6 @@ function createGameEngine({ io }) {
       modeIcon: mode.icon,
       scoreMultiplier: mode.scoreMultiplier,
       letter: room.currentLetter,
-      gameMode: room.gameMode,
       roundMode: getGameModeConfig(room.gameMode),
       roundStartedAt: room.roundStartedAt,
       endReason,

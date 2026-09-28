@@ -296,7 +296,11 @@ function createAnswerValidator(openai, options = {}) {
     // browser test environment and never in production. This lets the E2E
     // suite exercise room, timing, submission, scoring and navigation flows
     // without requiring an external AI credential.
-    if (process.env.E2E_MODE === "true") {
+    const isE2EMode =
+      process.env.E2E_MODE === "true" &&
+      process.env.NODE_ENV !== "production";
+
+    if (isE2EMode) {
       for (const category of CATEGORIES) {
         const answer = normalizeText(source[category]);
         result[category] = Boolean(
@@ -315,7 +319,7 @@ function createAnswerValidator(openai, options = {}) {
         continue;
       }
 
-      if (process.env.E2E_MODE === "true") {
+      if (isE2EMode) {
         result[category] = true;
         continue;
       }

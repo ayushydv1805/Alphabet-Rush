@@ -12,6 +12,10 @@ const {
 const PORT = Number(process.env.PORT) || 5000;
 
 async function startServer() {
+  if (process.env.NODE_ENV === "production" && !process.env.AUTH_SECRET) {
+    throw new Error("AUTH_SECRET must be configured in production.");
+  }
+
   const { server, redisReady } = createApp();
 
   let persistenceEnabled = false;
