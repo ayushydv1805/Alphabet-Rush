@@ -113,7 +113,7 @@ A task is complete when:
 
 The backend now has automated coverage for answer validation, game modes, game-engine lifecycle behavior, payload normalization, rate limiting, structured logging, room cleanup and Socket.IO handler flows.
 
-The remaining production gap is completing relational Postgres wiring on the existing Render service; the repo contains the Render Blueprint that links the existing Postgres and Key Value resources.
+Render now has an attached Postgres database and Key Value resource. The server creates and maintains the room snapshot table automatically at startup and persists every important room lifecycle change to Postgres plus Redis. The remaining product-level work is richer durable user accounts and long-term match analytics.
 
 Phase 2 progression work is deployed to the current production frontend/backend commits.
 
