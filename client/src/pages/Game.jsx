@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import AnswerField from "../components/game/AnswerField";
 import PlayerSubmissionStatus from "../components/game/PlayerSubmissionStatus";
-import { ANSWER_FIELDS, DEFAULT_TIME_LIMIT, GAME_MODES } from "../constants/game";
+import { DEFAULT_TIME_LIMIT, GAME_MODES } from "../constants/game";
+import { getCategoryPack } from "../constants/categoryPacks";
 import { playGameSound } from "../services/sound";
 import { getAvatar, getProfile } from "../services/profile";
 import socket from "../services/socket";
@@ -22,6 +23,8 @@ function Game() {
 
   const totalTime = gameData?.timeLimit || DEFAULT_TIME_LIMIT;
   const mode = GAME_MODES.find((item) => item.id === gameData?.gameMode) || GAME_MODES[0];
+  const categoryPack = getCategoryPack(gameData?.categoryPack);
+  const fields = categoryPack.categories;
 
   const [timeLeft, setTimeLeft] = useState(totalTime);
   const [answers, setAnswers] = useState(EMPTY_ANSWERS);
@@ -198,6 +201,7 @@ function Game() {
             <div className="game-kicker-row">
               <p className="game-kicker">ALPHABET RUSH</p>
               <span className="mode-pill">{mode.icon} {mode.name}</span>
+              <span className="mode-pill">{categoryPack.icon} {categoryPack.name}</span>
             </div>
             <h1>Round {gameData.currentRound}</h1>
             <p>
@@ -246,7 +250,8 @@ function Game() {
           <span>YOUR LETTER</span>
           <div className="letter letter-live">{gameData.letter}</div>
           <p className="letter-hint">
-            Every answer must start with {gameData.letter}.\n            {mode.scoreMultiplier > 1 ? " Every valid answer is worth 2 points." : ""}
+            {categoryPack.name} · Every answer must start with {gameData.letter}.
+            {mode.scoreMultiplier > 1 ? " Every valid answer is worth 2 points." : ""}
           </p>
         </section>
 
@@ -266,7 +271,7 @@ function Game() {
         ) : null}
 
         <section className="answers-section" aria-label="Answer fields">
-          {ANSWER_FIELDS.map((field) => (
+          {fields.map((field) => (
             <AnswerField
               key={field.name}
               {...field}
