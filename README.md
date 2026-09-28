@@ -64,6 +64,16 @@ A typical match works like this:
 - Host-controlled start and round progression.
 - Host transfer when the current host disconnects.
 
+### 🧩 Challenge Packs
+Hosts can choose the challenge set before starting a room:
+
+- 🎯 **Classic** — Name · Place · Thing · Animal · Food
+- 🇮🇳 **India** — Person · Indian Place · Indian Thing · Animal · Indian Food
+- 🎬 **Entertainment** — Actor / Actress · Movie · Character · Game · Brand
+- 💻 **Tech** — Developer · Company · Technology · Language · Tool
+
+The same realtime game protocol is reused while the visible category labels and AI semantic validation rules change with the selected pack.
+
 ### 🔤 Five Word Categories
 
 Every round asks for:
