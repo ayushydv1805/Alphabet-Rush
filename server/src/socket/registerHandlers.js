@@ -155,7 +155,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
       });
     });
 
-    socket.on("joinRoom", (payload) => {
+    socket.on("joinRoom", async (payload) => {
       if (!actionLimiter.isAllowed(socket.id + ":join")) {
         socket.emit("joinError", "Too many requests. Please wait a moment.");
         return;
@@ -260,7 +260,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
       });
     });
 
-    socket.on("resumeRoom", (payload = {}) => {
+    socket.on("resumeRoom", async (payload = {}) => {
       const { roomCode, identityToken } = payload;
       const code = normalizeRoomCode(roomCode);
       const verified = verifyIdentityToken(identityToken);
@@ -270,7 +270,8 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
         return;
       }
 
-      const room = getRoom(code);
+      let room = getRoom(code);
+      if (!room) room = await loadPersistedRoom(code);
       if (!room) {
         socket.emit("actionError", "That room is no longer available.");
         return;
@@ -405,7 +406,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
       });
     });
 
-    socket.on("startGame", ({ roomCode } = {}) => {
+    socket.on("startGame", async ({ roomCode } = {}) => {
       if (!actionLimiter.isAllowed(socket.id + ":start")) return;
 
       const code = normalizeRoomCode(roomCode);
@@ -559,9 +560,10 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
       }
     });
 
-    socket.on("nextRound", ({ roomCode, roundId, gameId } = {}) => {
+    socket.on("nextRound", async ({ roomCode, roundId, gameId } = {}) => {
       const code = normalizeRoomCode(roomCode);
-      const room = getRoom(code);
+      let room = getRoom(code);
+      if (!room) room = await loadPersistedRoom(code);
 
       if (!room) {
         socket.emit("actionError", "Room not found.");
@@ -621,9 +623,10 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
       persistRoom(getRoom(code));
     });
 
-    socket.on("rematch", ({ roomCode, gameId } = {}) => {
+    socket.on("rematch", async ({ roomCode, gameId } = {}) => {
       const code = normalizeRoomCode(roomCode);
-      const room = getRoom(code);
+      let room = getRoom(code);
+      if (!room) room = await loadPersistedRoom(code);
 
       if (!room) {
         socket.emit("actionError", "Room not found.");
