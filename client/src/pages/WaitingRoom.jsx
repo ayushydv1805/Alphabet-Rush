@@ -75,7 +75,7 @@ function WaitingRoom() {
         <button className="leave-btn" type="button" onClick={() => {
             clearActiveSession();
             navigate("/");
-          }>
+          }}>
           ← Leave Room
         </button>
       </section>
