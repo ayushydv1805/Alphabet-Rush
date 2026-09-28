@@ -34,6 +34,7 @@ function createApp() {
 
     res.json({
       ok: true,
+      release: "phase-6-category-packs",
       status: aiConfigured ? "healthy" : "degraded",
       validator: aiConfigured ? "ai" : "fallback",
       model: aiConfigured
