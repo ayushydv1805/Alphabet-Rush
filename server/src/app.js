@@ -12,6 +12,7 @@ const { createAnswerValidator } = require("./services/answerValidator");
 const { createGameEngine } = require("./game/gameEngine");
 const { registerSocketHandlers } = require("./socket/registerHandlers");
 const { configureRedisAdapter } = require("./realtime/redisAdapter");
+const { getPersistenceStatus } = require("./store/roomPersistence");
 const { logEvent } = require("./utils/logger");
 
 function createApp() {
@@ -38,6 +39,7 @@ function createApp() {
       model: aiConfigured
         ? process.env.OPENAI_MODEL || "gpt-5.6-luna"
         : null,
+      persistence: getPersistenceStatus(),
       rooms: roomStats.rooms,
       players: roomStats.players,
       uptimeSeconds: Math.floor(process.uptime()),
