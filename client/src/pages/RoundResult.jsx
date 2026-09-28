@@ -102,7 +102,7 @@ function RoundResult() {
       perfectRound:
         (me.correctCount ??
           Object.values(me.validation || {}).filter(Boolean).length) ===
-        ANSWER_FIELDS.length,
+        fields.length,
       isWinner: (resultData.winnerIds || []).includes(me.id),
     });
   }, [
