@@ -7,9 +7,11 @@ const {
 
 test("exposes all supported challenge packs", () => {
   assert.deepEqual(Object.keys(CATEGORY_PACKS).sort(), [
+    "campus",
     "classic",
     "entertainment",
     "india",
+    "sports",
     "tech",
   ]);
 });
@@ -26,4 +28,23 @@ test("every pack contains five ordered answer categories", () => {
       ["name", "place", "thing", "animal", "food"]
     );
   }
+});
+
+
+test("sports pack has useful sports categories", () => {
+  const pack = getCategoryPackConfig("sports");
+  assert.equal(pack.name, "Sports");
+  assert.deepEqual(
+    pack.categories.map((category) => category.label),
+    ["Athlete", "Team", "Sport", "Venue", "Sports Brand"]
+  );
+});
+
+test("campus pack has student-focused categories", () => {
+  const pack = getCategoryPackConfig("campus");
+  assert.equal(pack.name, "Campus");
+  assert.deepEqual(
+    pack.categories.map((category) => category.label),
+    ["Student Name", "College / University", "Subject", "Technology", "App / Platform"]
+  );
 });
