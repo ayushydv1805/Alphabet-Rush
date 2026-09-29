@@ -157,10 +157,12 @@ async function initMatchHistoryStore() {
 async function recordCompletedMatch(record) {
   if (!connected || !pool || !record?.gameId) return false;
 
-  await pool.query("BEGIN");
+  const client = await pool.connect();
 
   try {
-    await pool.query(
+    await client.query("BEGIN");
+
+    await client.query(
       `
         INSERT INTO alphabet_rush_matches (
           game_id,
@@ -195,7 +197,7 @@ async function recordCompletedMatch(record) {
     );
 
     for (const player of record.players || []) {
-      await pool.query(
+      await client.query(
         `
           INSERT INTO alphabet_rush_match_players (
             game_id,
@@ -239,11 +241,13 @@ async function recordCompletedMatch(record) {
       );
     }
 
-    await pool.query("COMMIT");
+    await client.query("COMMIT");
     return true;
   } catch (error) {
-    await pool.query("ROLLBACK").catch(() => {});
+    await client.query("ROLLBACK").catch(() => {});
     throw error;
+  } finally {
+    client.release();
   }
 }
 
