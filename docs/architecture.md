@@ -193,3 +193,13 @@ The client and server share the same pack identifiers:
 The host selects a pack during room creation. The selected pack is stored with the room snapshot and broadcast with room, round and result events. The server uses the pack configuration to build the AI validation prompt, so a category such as `Movie` is not accidentally judged using the Classic `Place` definition.
 
 Legacy rooms without a stored pack identifier safely resolve to `classic`.
+
+
+### Durable match history
+
+Completed games are summarized into two Postgres tables:
+
+- `alphabet_rush_matches` stores match-level metadata such as mode, category pack, round count, winner IDs, start/end time and winning score.
+- `alphabet_rush_match_players` stores per-player placement, final score, correct-answer count, perfect rounds and best streak.
+
+The public player endpoints use the signed durable identity token, so a client cannot request another player's history by changing a player ID in the URL.
