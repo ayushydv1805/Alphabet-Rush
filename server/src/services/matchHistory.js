@@ -49,12 +49,18 @@ function buildMatchRecord({ room, endedAt = new Date().toISOString() }) {
       .filter((player) => (player.score || 0) === topScore)
       .map((player) => player.playerId)
       .filter(Boolean),
-    startedAt: room.createdAt
-      ? new Date(room.createdAt).toISOString()
-      : null,
+    startedAt: room.matchStartedAt
+      ? new Date(room.matchStartedAt).toISOString()
+      : room.createdAt
+        ? new Date(room.createdAt).toISOString()
+        : null,
     endedAt,
     durationSeconds: calculateMatchDuration(
-      room.createdAt ? new Date(room.createdAt).toISOString() : null,
+      room.matchStartedAt
+        ? new Date(room.matchStartedAt).toISOString()
+        : room.createdAt
+          ? new Date(room.createdAt).toISOString()
+          : null,
       endedAt
     ),
     players: players
