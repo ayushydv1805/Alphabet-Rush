@@ -8,6 +8,10 @@ const {
   hydrateRooms,
   closeRoomPersistence,
 } = require("./src/store/roomPersistence");
+const {
+  initMatchHistoryStore,
+  closeMatchHistoryStore,
+} = require("./src/services/matchHistory");
 
 const PORT = Number(process.env.PORT) || 5000;
 
@@ -20,14 +24,20 @@ async function startServer() {
 
   let persistenceEnabled = false;
   let restoredRooms = 0;
+  let matchHistoryEnabled = false;
 
   try {
     persistenceEnabled = await initRoomPersistence();
     restoredRooms = persistenceEnabled ? await hydrateRooms() : 0;
+    matchHistoryEnabled = await initMatchHistoryStore();
   } catch (error) {
     logError("room_persistence_startup_error", error);
-    await closeRoomPersistence();
+    await Promise.allSettled([
+      closeRoomPersistence(),
+      closeMatchHistoryStore(),
+    ]);
     persistenceEnabled = false;
+    matchHistoryEnabled = false;
   }
 
   const redis = await redisReady;
@@ -39,6 +49,7 @@ async function startServer() {
       environment: process.env.NODE_ENV || "development",
       redisAdapter: redis.enabled,
       roomPersistence: persistenceEnabled,
+      matchHistory: matchHistoryEnabled,
       restoredRooms,
     });
   });
@@ -65,6 +76,7 @@ async function startServer() {
       await Promise.allSettled([
         redis.close(),
         closeRoomPersistence(),
+        closeMatchHistoryStore(),
       ]);
 
       if (error) {
