@@ -1,7 +1,10 @@
 const { Pool } = require("pg");
+const { createClient } = require("redis");
 
 let pool = null;
+let redis = null;
 let connected = false;
+let storageMode = "disabled";
 
 function normalizeLimit(value, fallback = 10) {
   const parsed = Number(value);
@@ -81,81 +84,222 @@ function buildMatchRecord({ room, endedAt = new Date().toISOString() }) {
 }
 
 async function initMatchHistoryStore() {
-  if (!process.env.DATABASE_URL) {
-    return false;
+  // Prefer Postgres when it is connected. Redis is a reliable fallback for
+  // the existing Render deployment, so player history still works even when
+  // the Postgres environment variable has not been linked to the web service.
+  if (process.env.DATABASE_URL) {
+    try {
+      pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl:
+          process.env.NODE_ENV === "production"
+            ? { rejectUnauthorized: false }
+            : undefined,
+        max: 3,
+        idleTimeoutMillis: 30_000,
+        connectionTimeoutMillis: 8_000,
+      });
+
+      pool.on("error", (error) => {
+        connected = false;
+        console.error(
+          JSON.stringify({
+            event: "match_history_database_error",
+            message: error.message,
+          })
+        );
+      });
+
+      const client = await pool.connect();
+
+      try {
+        await client.query(`
+          CREATE TABLE IF NOT EXISTS alphabet_rush_matches (
+            game_id TEXT PRIMARY KEY,
+            room_code TEXT NOT NULL,
+            game_mode TEXT NOT NULL,
+            category_pack TEXT NOT NULL,
+            rounds INTEGER NOT NULL DEFAULT 0,
+            winning_score INTEGER NOT NULL DEFAULT 0,
+            winner_player_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
+            started_at TIMESTAMPTZ,
+            ended_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            duration_seconds INTEGER
+          )
+        `);
+
+        await client.query(`
+          CREATE TABLE IF NOT EXISTS alphabet_rush_match_players (
+            game_id TEXT NOT NULL REFERENCES alphabet_rush_matches(game_id) ON DELETE CASCADE,
+            player_id TEXT NOT NULL,
+            player_name TEXT NOT NULL,
+            avatar TEXT NOT NULL,
+            title TEXT NOT NULL,
+            final_score INTEGER NOT NULL DEFAULT 0,
+            placement INTEGER,
+            rounds_played INTEGER NOT NULL DEFAULT 0,
+            correct_answers INTEGER NOT NULL DEFAULT 0,
+            perfect_rounds INTEGER NOT NULL DEFAULT 0,
+            best_streak INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (game_id, player_id)
+          )
+        `);
+
+        await client.query(`
+          CREATE INDEX IF NOT EXISTS alphabet_rush_match_players_player_idx
+          ON alphabet_rush_match_players (player_id, game_id DESC)
+        `);
+
+        connected = true;
+        storageMode = "postgres";
+      } finally {
+        client.release();
+      }
+
+      return true;
+    } catch (error) {
+      connected = false;
+      await pool?.end().catch(() => {});
+      pool = null;
+
+      console.error(
+        JSON.stringify({
+          event: "match_history_postgres_unavailable",
+          message: error.message,
+        })
+      );
+    }
   }
 
-  pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl:
-      process.env.NODE_ENV === "production"
-        ? { rejectUnauthorized: false }
-        : undefined,
-    max: 3,
-    idleTimeoutMillis: 30_000,
-    connectionTimeoutMillis: 8_000,
-  });
+  if (process.env.REDIS_URL) {
+    redis = createClient({ url: process.env.REDIS_URL });
 
-  pool.on("error", (error) => {
-    connected = false;
-    console.error(
-      JSON.stringify({
-        event: "match_history_database_error",
-        message: error.message,
-      })
-    );
-  });
+    redis.on("error", (error) => {
+      connected = false;
+      console.error(
+        JSON.stringify({
+          event: "match_history_redis_error",
+          message: error.message,
+        })
+      );
+    });
 
-  const client = await pool.connect();
+    try {
+      await redis.connect();
+      connected = true;
+      storageMode = "redis";
+      return true;
+    } catch (error) {
+      await redis.disconnect().catch(() => {});
+      redis = null;
 
-  try {
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS alphabet_rush_matches (
-        game_id TEXT PRIMARY KEY,
-        room_code TEXT NOT NULL,
-        game_mode TEXT NOT NULL,
-        category_pack TEXT NOT NULL,
-        rounds INTEGER NOT NULL DEFAULT 0,
-        winning_score INTEGER NOT NULL DEFAULT 0,
-        winner_player_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
-        started_at TIMESTAMPTZ,
-        ended_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        duration_seconds INTEGER
-      )
-    `);
-
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS alphabet_rush_match_players (
-        game_id TEXT NOT NULL REFERENCES alphabet_rush_matches(game_id) ON DELETE CASCADE,
-        player_id TEXT NOT NULL,
-        player_name TEXT NOT NULL,
-        avatar TEXT NOT NULL,
-        title TEXT NOT NULL,
-        final_score INTEGER NOT NULL DEFAULT 0,
-        placement INTEGER,
-        rounds_played INTEGER NOT NULL DEFAULT 0,
-        correct_answers INTEGER NOT NULL DEFAULT 0,
-        perfect_rounds INTEGER NOT NULL DEFAULT 0,
-        best_streak INTEGER NOT NULL DEFAULT 0,
-        PRIMARY KEY (game_id, player_id)
-      )
-    `);
-
-    await client.query(`
-      CREATE INDEX IF NOT EXISTS alphabet_rush_match_players_player_idx
-      ON alphabet_rush_match_players (player_id, game_id DESC)
-    `);
-
-    connected = true;
-  } finally {
-    client.release();
+      console.error(
+        JSON.stringify({
+          event: "match_history_redis_startup_error",
+          message: error.message,
+        })
+      );
+    }
   }
 
-  return true;
+  return false;
 }
 
 async function recordCompletedMatch(record) {
-  if (!connected || !pool || !record?.gameId) return false;
+  if (!connected || !record?.gameId) return false;
+
+  if (storageMode === "redis" && redis) {
+    for (const player of record.players || []) {
+      const idempotencyKey =
+        "alphabet-rush:match-recorded:" +
+        record.gameId +
+        ":" +
+        player.playerId;
+
+      const inserted = await redis.set(idempotencyKey, "1", { NX: true });
+
+      if (inserted !== "OK") {
+        continue;
+      }
+
+      const historyEntry = {
+        gameId: record.gameId,
+        roomCode: record.roomCode,
+        gameMode: record.gameMode,
+        categoryPack: record.categoryPack,
+        rounds: record.rounds,
+        winningScore: record.winningScore,
+        winnerPlayerIds: record.winnerPlayerIds || [],
+        startedAt: record.startedAt,
+        endedAt: record.endedAt,
+        durationSeconds: record.durationSeconds,
+        playerName: player.playerName,
+        finalScore: player.finalScore,
+        placement: player.placement,
+        roundsPlayed: player.roundsPlayed,
+        correctAnswers: player.correctAnswers,
+        perfectRounds: player.perfectRounds,
+        bestStreak: player.bestStreak,
+        won: (record.winnerPlayerIds || []).includes(player.playerId),
+      };
+
+      const historyKey = "alphabet-rush:player-history:" + player.playerId;
+      const statsKey = "alphabet-rush:player-stats:" + player.playerId;
+
+      const multi = redis.multi();
+      multi.lPush(historyKey, JSON.stringify(historyEntry));
+      multi.lTrim(historyKey, 0, 49);
+      multi.hIncrBy(statsKey, "gamesPlayed", 1);
+      multi.hIncrBy(
+        statsKey,
+        "wins",
+        historyEntry.won ? 1 : 0
+      );
+      multi.hIncrBy(
+        statsKey,
+        "totalPoints",
+        player.finalScore
+      );
+      multi.hIncrBy(
+        statsKey,
+        "totalCorrectAnswers",
+        player.correctAnswers
+      );
+      multi.hIncrBy(
+        statsKey,
+        "perfectRounds",
+        player.perfectRounds
+      );
+      multi.hIncrBy(
+        statsKey,
+        "totalRounds",
+        player.roundsPlayed
+      );
+      multi.hIncrBy(
+        statsKey,
+        "totalScore",
+        player.finalScore
+      );
+
+      await multi.exec();
+
+      const existingBestStreak = Number(
+        await redis.hGet(statsKey, "bestStreak")
+      ) || 0;
+
+      if (player.bestStreak > existingBestStreak) {
+        await redis.hSet(
+          statsKey,
+          "bestStreak",
+          String(player.bestStreak)
+        );
+      }
+    }
+
+    return true;
+  }
+
+  if (storageMode !== "postgres" || !pool) return false;
 
   const client = await pool.connect();
 
@@ -252,9 +396,29 @@ async function recordCompletedMatch(record) {
 }
 
 async function getPlayerMatchHistory(playerId, limit = 10) {
-  if (!connected || !pool || !playerId) return [];
+  if (!connected || !playerId) return [];
 
   const safeLimit = normalizeLimit(limit);
+
+  if (storageMode === "redis" && redis) {
+    const rawEntries = await redis.lRange(
+      "alphabet-rush:player-history:" + playerId,
+      0,
+      safeLimit - 1
+    );
+
+    return rawEntries
+      .map((raw) => {
+        try {
+          return JSON.parse(raw);
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean);
+  }
+
+  if (storageMode !== "postgres" || !pool) return [];
 
   const result = await pool.query(
     `
@@ -312,9 +476,35 @@ async function getPlayerMatchHistory(playerId, limit = 10) {
 }
 
 async function getPlayerLifetimeStats(playerId) {
-  if (!connected || !pool || !playerId) {
+  if (!connected || !playerId) {
     return null;
   }
+
+  if (storageMode === "redis" && redis) {
+    const row = await redis.hGetAll(
+      "alphabet-rush:player-stats:" + playerId
+    );
+
+    const gamesPlayed = Number(row.gamesPlayed) || 0;
+
+    return {
+      gamesPlayed,
+      wins: Number(row.wins) || 0,
+      winRate: gamesPlayed
+        ? Math.round(((Number(row.wins) || 0) / gamesPlayed) * 100)
+        : 0,
+      totalPoints: Number(row.totalPoints) || 0,
+      totalCorrectAnswers: Number(row.totalCorrectAnswers) || 0,
+      perfectRounds: Number(row.perfectRounds) || 0,
+      bestStreak: Number(row.bestStreak) || 0,
+      totalRounds: Number(row.totalRounds) || 0,
+      averageScore: gamesPlayed
+        ? Number((Number(row.totalScore || 0) / gamesPlayed).toFixed(2))
+        : 0,
+    };
+  }
+
+  if (storageMode !== "postgres" || !pool) return null;
 
   const result = await pool.query(
     `
@@ -357,16 +547,20 @@ async function getPlayerLifetimeStats(playerId) {
 async function closeMatchHistoryStore() {
   connected = false;
 
-  if (pool) {
-    await pool.end();
-  }
+  await Promise.allSettled([
+    pool?.end(),
+    redis?.quit(),
+  ]);
 
   pool = null;
+  redis = null;
+  storageMode = "disabled";
 }
 
 function getMatchHistoryStatus() {
   return {
     enabled: connected,
+    storage: storageMode,
   };
 }
 
