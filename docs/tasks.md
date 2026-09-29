@@ -145,7 +145,24 @@ Completed:
 - [x] Automated tests for pack configuration and specialized-pack AI validation.
 
 Current Phase 6 focus:
-- [ ] Durable player match history.
-- [ ] Long-term match analytics.
+- [x] Durable player match history.
+- [x] Long-term player analytics.
 - [ ] Additional themed category packs.
 - [ ] Ranked matchmaking.
+
+
+## Phase 7 — Match History & Analytics
+
+Completed:
+- [x] Postgres-backed completed-match records.
+- [x] Per-player match summaries with placement, score, correct answers and streaks.
+- [x] Authenticated player history API using the existing durable identity token.
+- [x] Lifetime analytics API.
+- [x] Profile screen synced with durable server-side history.
+- [x] Match-history unit coverage.
+- [x] Transaction-safe match recording with idempotent game IDs.
+
+Next:
+- [ ] Additional themed packs.
+- [ ] Ranked matchmaking.
+- [ ] Long-term aggregate leaderboards.
