@@ -14,6 +14,12 @@ const { registerSocketHandlers } = require("./socket/registerHandlers");
 const { configureRedisAdapter } = require("./realtime/redisAdapter");
 const { getPersistenceStatus } = require("./store/roomPersistence");
 const { logEvent } = require("./utils/logger");
+const { verifyIdentityToken } = require("./auth/identity");
+const {
+  getPlayerMatchHistory,
+  getPlayerLifetimeStats,
+  getMatchHistoryStatus,
+} = require("./services/matchHistory");
 
 function createApp() {
   const openai = process.env.OPENAI_API_KEY
@@ -34,7 +40,7 @@ function createApp() {
 
     res.json({
       ok: true,
-      release: "phase-6-category-packs",
+      release: "phase-7-match-history",
       status: aiConfigured ? "healthy" : "degraded",
       validator: aiConfigured ? "ai" : "fallback",
       model: aiConfigured
@@ -43,9 +49,84 @@ function createApp() {
       persistence: getPersistenceStatus(),
       rooms: roomStats.rooms,
       players: roomStats.players,
+      matchHistory: getMatchHistoryStatus(),
       uptimeSeconds: Math.floor(process.uptime()),
       timestamp: new Date().toISOString(),
     });
+  });
+
+  function authenticatePlayer(request, response) {
+    const header = request.get("authorization") || "";
+    const token = header.startsWith("Bearer ")
+      ? header.slice(7).trim()
+      : request.get("x-player-token") || "";
+
+    const verified = verifyIdentityToken(token);
+
+    if (!verified?.playerId) {
+      response.status(401).json({
+        ok: false,
+        error: "A valid player session is required.",
+      });
+      return null;
+    }
+
+    return verified.playerId;
+  }
+
+  app.get("/api/player/history", async (req, res) => {
+    const playerId = authenticatePlayer(req, res);
+    if (!playerId) return;
+
+    try {
+      const history = await getPlayerMatchHistory(
+        playerId,
+        req.query.limit
+      );
+
+      res.json({
+        ok: true,
+        history,
+      });
+    } catch (error) {
+      console.error(
+        JSON.stringify({
+          event: "player_history_request_error",
+          message: error.message,
+        })
+      );
+
+      res.status(503).json({
+        ok: false,
+        error: "Match history is temporarily unavailable.",
+      });
+    }
+  });
+
+  app.get("/api/player/stats", async (req, res) => {
+    const playerId = authenticatePlayer(req, res);
+    if (!playerId) return;
+
+    try {
+      const stats = await getPlayerLifetimeStats(playerId);
+
+      res.json({
+        ok: true,
+        stats,
+      });
+    } catch (error) {
+      console.error(
+        JSON.stringify({
+          event: "player_stats_request_error",
+          message: error.message,
+        })
+      );
+
+      res.status(503).json({
+        ok: false,
+        error: "Player analytics are temporarily unavailable.",
+      });
+    }
   });
 
   const server = http.createServer(app);
