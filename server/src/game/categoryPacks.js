@@ -51,6 +51,32 @@ const CATEGORY_PACKS = {
       { key: "food", label: "Tool", semantic: "a real developer tool, framework, library, IDE, database, package manager, or command-line tool" },
     ],
   },
+  sports: {
+    id: "sports",
+    name: "Sports",
+    icon: "🏏",
+    description: "Athletes, teams, sports, venues & brands",
+    categories: [
+      { key: "name", label: "Athlete", semantic: "a real athlete or sports person" },
+      { key: "place", label: "Team", semantic: "a real sports team, club, franchise or national team" },
+      { key: "thing", label: "Sport", semantic: "a real sport or recognized sporting discipline" },
+      { key: "animal", label: "Venue", semantic: "a real stadium, arena, sports ground or sporting venue" },
+      { key: "food", label: "Sports Brand", semantic: "a real sportswear, sports equipment or sports-related brand" },
+    ],
+  },
+  campus: {
+    id: "campus",
+    name: "Campus",
+    icon: "🎓",
+    description: "Student life, colleges, subjects, tech & apps",
+    categories: [
+      { key: "name", label: "Student Name", semantic: "a real person's name commonly used as a student name" },
+      { key: "place", label: "College / University", semantic: "a real college, university or higher-education institution" },
+      { key: "thing", label: "Subject", semantic: "a real academic subject, course, field or discipline" },
+      { key: "animal", label: "Technology", semantic: "a real technology, programming concept, platform, device or technical system" },
+      { key: "food", label: "App / Platform", semantic: "a real software application, website or digital platform" },
+    ],
+  },
 };
 
 function getCategoryPackConfig(packId) {
