@@ -185,3 +185,8 @@ Next:
 - [ ] Rating / MMR progression.
 - [ ] Seasonal leaderboard resets.
 - [ ] Friends and private invites.
+
+
+## Phase 8 Release Note
+
+The current release includes the Sports and Campus challenge packs plus the durable global rankings page and aggregation API.
