@@ -155,6 +155,10 @@ function createGameEngine({ io }) {
     room.roundId = require("node:crypto").randomUUID();
     room.currentLetter = getRoundLetter(room.gameMode);
     room.roundStartedAt = Date.now();
+
+    if (roundNumber === 1) {
+      room.matchStartedAt = room.roundStartedAt;
+    }
     room.winnerId = null;
     room.winnerIds = [];
     room.winnerNames = [];
