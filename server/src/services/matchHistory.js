@@ -374,4 +374,6 @@ module.exports = {
   closeMatchHistoryStore,
   getMatchHistoryStatus,
   buildMatchRecord,
+  calculatePlacement,
+  calculateMatchDuration,
 };
