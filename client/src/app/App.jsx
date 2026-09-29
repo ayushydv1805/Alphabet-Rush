@@ -11,6 +11,7 @@ import JoinRoom from "../pages/JoinRoom";
 import Leaderboard from "../pages/Leaderboard";
 import NotFound from "../pages/NotFound";
 import Profile from "../pages/Profile";
+import Rankings from "../pages/Rankings";
 import RoundResult from "../pages/RoundResult";
 import WaitingRoom from "../pages/WaitingRoom";
 
@@ -31,6 +32,7 @@ function App() {
         <Route path="/round-result" element={<RoundResult />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/rankings" element={<Rankings />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
