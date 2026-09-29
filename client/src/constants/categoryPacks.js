@@ -51,6 +51,32 @@ export const CATEGORY_PACKS = [
       { key: "food", label: "Tool", placeholder: "Enter a tech tool" },
     ],
   },
+  {
+    id: "sports",
+    name: "Sports",
+    icon: "🏏",
+    description: "Athletes, teams, sports, venues & brands",
+    categories: [
+      { key: "name", label: "Athlete", placeholder: "Enter an athlete" },
+      { key: "place", label: "Team", placeholder: "Enter a sports team" },
+      { key: "thing", label: "Sport", placeholder: "Enter a sport" },
+      { key: "animal", label: "Venue", placeholder: "Enter a stadium or venue" },
+      { key: "food", label: "Sports Brand", placeholder: "Enter a sports brand" },
+    ],
+  },
+  {
+    id: "campus",
+    name: "Campus",
+    icon: "🎓",
+    description: "Student life, colleges, subjects, tech & apps",
+    categories: [
+      { key: "name", label: "Student Name", placeholder: "Enter a name" },
+      { key: "place", label: "College / University", placeholder: "Enter an institution" },
+      { key: "thing", label: "Subject", placeholder: "Enter a subject" },
+      { key: "animal", label: "Technology", placeholder: "Enter a technology" },
+      { key: "food", label: "App / Platform", placeholder: "Enter an app or platform" },
+    ],
+  },
 ];
 
 export function getCategoryPack(packId) {
