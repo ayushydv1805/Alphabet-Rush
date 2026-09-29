@@ -361,7 +361,10 @@ function Profile() {
           )}
         </section>
 
-        <Link className="profile-play-btn" to="/">PLAY A GAME →</Link>
+        <div className="profile-actions">
+          <Link className="profile-secondary-btn" to="/rankings">VIEW GLOBAL RANKINGS</Link>
+          <Link className="profile-play-btn" to="/">PLAY A GAME →</Link>
+        </div>
       </section>
     </main>
   );
