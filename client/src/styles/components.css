@@ -1248,3 +1248,40 @@ html[data-theme="light"] .round-winner-card {
     grid-template-columns: 1fr;
   }
 }
+
+
+.rankings-refresh-btn {
+  min-height: 42px;
+  padding: 0 14px;
+  flex-shrink: 0;
+  border: 1px solid var(--ar-border);
+  border-radius: 12px;
+  background: var(--ar-surface-soft);
+  color: var(--ar-text);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.8px;
+  cursor: pointer;
+  transition: transform var(--ar-transition), border-color var(--ar-transition), background var(--ar-transition), opacity var(--ar-transition);
+}
+
+.rankings-refresh-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: var(--ar-border-strong);
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.rankings-refresh-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+@media (max-width: 760px) {
+  .rankings-hero {
+    flex-wrap: wrap;
+  }
+
+  .rankings-refresh-btn {
+    width: 100%;
+  }
+}
