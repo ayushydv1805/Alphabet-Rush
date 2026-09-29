@@ -120,7 +120,7 @@ The host selects the mode while creating the room. The server remains authoritat
 - Round awards such as Perfect Round, Word Machine, On Fire, Round Winner and Quick Thinker.
 
 ### 📚 Match History & Analytics
-- Durable completed-match records stored in Render Postgres.
+- Durable completed-match records stored in Render Postgres when linked, with Redis-backed fallback in the existing Render deployment.
 - Recent match history shown in the player profile.
 - Server-side lifetime analytics for games, wins, points, correct answers, perfect rounds and streaks.
 - History is linked to the signed anonymous player identity rather than browser-only counters.
@@ -501,7 +501,7 @@ Set OPENAI_API_KEY in the Render environment.
 
 ## 🔐 Persistent Multiplayer
 
-The production backend now supports durable anonymous player sessions and Redis-backed multiplayer state.
+The production backend supports durable anonymous player sessions, Redis-backed multiplayer state, and durable completed-match history.
 
 ### Durable identity
 - Each player receives a signed identity token.
