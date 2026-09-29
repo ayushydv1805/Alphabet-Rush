@@ -1864,3 +1864,83 @@
     font-size: 17px;
   }
 }
+
+
+/* -------------------- Global rankings page -------------------- */
+
+.rankings-page {
+  align-items: flex-start;
+  padding-top: 74px;
+}
+
+.rankings-card {
+  max-width: 980px;
+  padding: 34px;
+}
+
+.rankings-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 28px;
+}
+
+.rankings-hero {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 26px;
+}
+
+.rankings-icon {
+  width: 74px;
+  height: 74px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  border-radius: 23px;
+  background: linear-gradient(135deg, var(--ar-accent), var(--ar-accent-3));
+  font-size: 32px;
+  box-shadow: 0 20px 40px rgba(99, 102, 241, 0.22);
+}
+
+.rankings-hero h1 {
+  margin: 0;
+  color: var(--ar-heading);
+  font-size: clamp(30px, 5vw, 45px);
+  line-height: 1;
+}
+
+.rankings-hero .room-subtitle {
+  max-width: 620px;
+  margin-bottom: 0;
+}
+
+.rankings-note {
+  margin: 16px 0 0;
+  color: var(--ar-subtle);
+  font-size: 10px;
+  text-align: center;
+}
+
+.rankings-card .profile-play-btn {
+  margin-top: 20px;
+}
+
+@media (max-width: 760px) {
+  .rankings-card {
+    padding: 24px 18px;
+  }
+
+  .rankings-hero {
+    align-items: flex-start;
+  }
+
+  .rankings-icon {
+    width: 58px;
+    height: 58px;
+    border-radius: 17px;
+    font-size: 24px;
+  }
+}
