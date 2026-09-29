@@ -18,6 +18,7 @@ const { verifyIdentityToken } = require("./auth/identity");
 const {
   getPlayerMatchHistory,
   getPlayerLifetimeStats,
+  getGlobalLeaderboard,
   getMatchHistoryStatus,
 } = require("./services/matchHistory");
 
@@ -40,7 +41,7 @@ function createApp() {
 
     res.json({
       ok: true,
-      release: "phase-7-match-history",
+      release: "phase-8-global-rankings",
       status: aiConfigured ? "healthy" : "degraded",
       validator: aiConfigured ? "ai" : "fallback",
       model: aiConfigured
@@ -128,6 +129,20 @@ function createApp() {
       });
     }
   });
+
+  app.get("/api/leaderboard", async (req, res) => {
+    try {
+      const leaderboard = await getGlobalLeaderboard(req.query.limit);
+      res.json({ ok: true, leaderboard });
+    } catch (error) {
+      logError("global_leaderboard_request_error", error, {});
+      res.status(503).json({
+        ok: false,
+        error: "Global leaderboard is temporarily unavailable.",
+      });
+    }
+  });
+
 
   const server = http.createServer(app);
   const io = new Server(server, { cors: createCorsOptions() });
