@@ -154,7 +154,7 @@ Current Phase 6 focus:
 ## Phase 7 — Match History & Analytics
 
 Completed:
-- [x] Postgres-backed completed-match records.
+- [x] Durable completed-match records using Render Postgres when linked, with Render Redis fallback in the existing service.
 - [x] Per-player match summaries with placement, score, correct answers and streaks.
 - [x] Authenticated player history API using the existing durable identity token.
 - [x] Lifetime analytics API.
