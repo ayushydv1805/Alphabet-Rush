@@ -10,6 +10,13 @@ Alphabet Rush is a full-stack multiplayer game built with **React + Vite** on th
 [![Realtime](https://img.shields.io/badge/Realtime-Socket.IO-010101?logo=socket.io)](https://socket.io/)
 [![AI](https://img.shields.io/badge/Validation-OpenAI-412991?logo=openai)](https://platform.openai.com/)
 
+
+## 🏆 Global Rankings
+
+The project now includes a public all-time rankings page backed by the durable match-history service. PostgreSQL is preferred, with Redis used as the fallback storage path already present in the deployment architecture.
+
+Open [Global Rankings](https://alphabet-rush.vercel.app/rankings) from the app or visit `/rankings` directly.
+
 ---
 
 ## 🌐 Live
@@ -561,6 +568,7 @@ The current implementation is intentionally prototype-oriented:
 - ⏳ Full browser end-to-end multiplayer testing.
 
 ### Product
+- [x] Global all-time rankings.
 - [ ] Custom category sets.
 - [ ] Player profiles and avatars.
 - [ ] Match history and statistics.
