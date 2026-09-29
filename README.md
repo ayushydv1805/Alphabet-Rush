@@ -119,6 +119,12 @@ The host selects the mode while creating the room. The server remains authoritat
 - Unlockable avatars and player titles.
 - Round awards such as Perfect Round, Word Machine, On Fire, Round Winner and Quick Thinker.
 
+### 📚 Match History & Analytics
+- Durable completed-match records stored in Render Postgres.
+- Recent match history shown in the player profile.
+- Server-side lifetime analytics for games, wins, points, correct answers, perfect rounds and streaks.
+- History is linked to the signed anonymous player identity rather than browser-only counters.
+
 ### 🌓 Light / Dark Mode
 - Global theme control in the top-right.
 - Theme stored in browser localStorage.
