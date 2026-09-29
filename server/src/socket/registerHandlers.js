@@ -21,6 +21,10 @@ const {
   deletePersistedRoom,
   loadPersistedRoom,
 } = require("../store/roomPersistence");
+const {
+  buildMatchRecord,
+  recordCompletedMatch,
+} = require("../services/matchHistory");
 
 const MAX_PLAYERS = 10;
 const ALLOWED_ROUNDS = [5, 10, 15, 20];
@@ -52,6 +56,7 @@ function resetPlayerRound(player, resetScore = false) {
     player.currentStreak = 0;
     player.bestStreak = 0;
     player.perfectRounds = 0;
+    player.totalCorrectAnswers = 0;
   }
 
   player.answers = {};
@@ -80,6 +85,7 @@ function makePlayer(socket, name, profile, playerId) {
     currentStreak: 0,
     bestStreak: 0,
     perfectRounds: 0,
+    totalCorrectAnswers: 0,
     connected: true,
     disconnectedAt: null,
     answers: {},
@@ -547,6 +553,8 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
       const correctCount = values.filter(Boolean).length;
       const mode = getGameModeConfig(currentRoom.gameMode);
       currentPlayer.correctCount = correctCount;
+      currentPlayer.totalCorrectAnswers =
+        (currentPlayer.totalCorrectAnswers || 0) + correctCount;
       currentPlayer.roundPoints = correctCount * mode.scoreMultiplier;
       currentPlayer.allCorrect = correctCount === Object.keys(validation).length;
 
@@ -646,6 +654,18 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
         const maxScore = players.length ? players[0].score : 0;
         const winners = players.filter((player) => player.score === maxScore);
 
+        const matchRecord = buildMatchRecord({
+          room,
+          endedAt: new Date().toISOString(),
+        });
+
+        recordCompletedMatch(matchRecord).catch((error) => {
+          logError("match_history_record_error", error, {
+            gameId: room.gameId,
+            roomCode: code,
+          });
+        });
+
         io.to(code).emit("gameOver", {
           roomCode,
           gameId: room.gameId,
@@ -658,6 +678,7 @@ function registerSocketHandlers({ io, validateAnswers, startRound, endRound }) {
           winningScore: maxScore,
           gameMode: room.gameMode,
           categoryPack: room.categoryPack,
+          categoryPackName: getCategoryPackConfig(room.categoryPack).name,
           players: players.map(toPlayerSummary),
         });
 
