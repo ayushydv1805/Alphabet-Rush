@@ -280,6 +280,19 @@ async function recordCompletedMatch(record) {
         "totalScore",
         player.finalScore
       );
+      multi.zIncrBy(
+        "alphabet-rush:global-leaderboard",
+        player.finalScore,
+        player.playerId
+      );
+      multi.hSet(
+        "alphabet-rush:leaderboard-player:" + player.playerId,
+        {
+          name: player.playerName,
+          avatar: player.avatar,
+          title: player.title,
+        }
+      );
 
       await multi.exec();
 
@@ -544,6 +557,113 @@ async function getPlayerLifetimeStats(playerId) {
   };
 }
 
+
+function buildGlobalLeaderboardRows(rows) {
+  return [...(rows || [])]
+    .map((row) => {
+      const gamesPlayed = Number(row.gamesPlayed ?? row.games_played) || 0;
+      const wins = Number(row.wins) || 0;
+      const totalPoints = Number(row.totalPoints ?? row.total_points) || 0;
+      const totalCorrectAnswers =
+        Number(row.totalCorrectAnswers ?? row.total_correct_answers) || 0;
+      const bestStreak = Number(row.bestStreak ?? row.best_streak) || 0;
+      const averageScoreRaw =
+        row.averageScore ??
+        row.average_score ??
+        (gamesPlayed ? totalPoints / gamesPlayed : 0);
+
+      return {
+        playerId: row.playerId ?? row.player_id,
+        name: row.name ?? row.player_name ?? "Player",
+        avatar: row.avatar || "⚡",
+        title: row.title || "Rush Rookie",
+        gamesPlayed,
+        wins,
+        totalPoints,
+        totalCorrectAnswers,
+        bestStreak,
+        averageScore: Number(Number(averageScoreRaw).toFixed(2)),
+      };
+    })
+    .filter((row) => row.playerId)
+    .sort(
+      (first, second) =>
+        second.totalPoints - first.totalPoints ||
+        second.wins - first.wins ||
+        second.averageScore - first.averageScore ||
+        second.bestStreak - first.bestStreak
+    );
+}
+
+async function getGlobalLeaderboard(limit = 25) {
+  const safeLimit = normalizeLimit(limit, 25);
+
+  if (!connected) return [];
+
+  if (storageMode === "redis" && redis) {
+    const ids = await redis.zRange(
+      "alphabet-rush:global-leaderboard",
+      0,
+      safeLimit - 1,
+      { REV: true }
+    );
+
+    const rows = [];
+
+    for (const playerId of ids) {
+      const profile = await redis.hGetAll(
+        "alphabet-rush:leaderboard-player:" + playerId
+      );
+      const stats = await redis.hGetAll(
+        "alphabet-rush:player-stats:" + playerId
+      );
+
+      rows.push({
+        playerId,
+        name: profile.name || "Player",
+        avatar: profile.avatar || "⚡",
+        title: profile.title || "Rush Rookie",
+        gamesPlayed: stats.gamesPlayed,
+        wins: stats.wins,
+        totalPoints: stats.totalPoints,
+        totalCorrectAnswers: stats.totalCorrectAnswers,
+        bestStreak: stats.bestStreak,
+        averageScore:
+          Number(stats.gamesPlayed) > 0
+            ? Number(stats.totalScore || 0) / Number(stats.gamesPlayed)
+            : 0,
+      });
+    }
+
+    return buildGlobalLeaderboardRows(rows);
+  }
+
+  if (storageMode !== "postgres" || !pool) return [];
+
+  const result = await pool.query(
+    \`
+      SELECT
+        p.player_id,
+        MAX(p.player_name) AS player_name,
+        MAX(p.avatar) AS avatar,
+        MAX(p.title) AS title,
+        COUNT(*)::int AS games_played,
+        COUNT(*) FILTER (WHERE p.placement = 1)::int AS wins,
+        COALESCE(SUM(p.final_score), 0)::int AS total_points,
+        COALESCE(SUM(p.correct_answers), 0)::int AS total_correct_answers,
+        COALESCE(MAX(p.best_streak), 0)::int AS best_streak,
+        COALESCE(AVG(p.final_score), 0)::numeric(10,2) AS average_score
+      FROM alphabet_rush_match_players p
+      GROUP BY p.player_id
+      ORDER BY total_points DESC, wins DESC, average_score DESC, best_streak DESC
+      LIMIT $1
+    \`,
+    [safeLimit]
+  );
+
+  return buildGlobalLeaderboardRows(result.rows);
+}
+
 async function closeMatchHistoryStore() {
   connected = false;
 
@@ -571,6 +691,8 @@ module.exports = {
   getPlayerLifetimeStats,
   closeMatchHistoryStore,
   getMatchHistoryStatus,
+  getGlobalLeaderboard,
+  buildGlobalLeaderboardRows,
   buildMatchRecord,
   calculatePlacement,
   calculateMatchDuration,
