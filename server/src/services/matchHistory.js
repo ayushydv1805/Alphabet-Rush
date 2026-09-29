@@ -641,7 +641,7 @@ async function getGlobalLeaderboard(limit = 25) {
   if (storageMode !== "postgres" || !pool) return [];
 
   const result = await pool.query(
-    \`
+    `
       SELECT
         p.player_id,
         MAX(p.player_name) AS player_name,
@@ -657,7 +657,7 @@ async function getGlobalLeaderboard(limit = 25) {
       GROUP BY p.player_id
       ORDER BY total_points DESC, wins DESC, average_score DESC, best_streak DESC
       LIMIT $1
-    \`,
+    `,
     [safeLimit]
   );
 
