@@ -166,3 +166,22 @@ Next:
 - [ ] Additional themed packs.
 - [ ] Ranked matchmaking.
 - [ ] Long-term aggregate leaderboards.
+
+
+## Phase 8 — Global Competition & Content Expansion
+
+Completed:
+- [x] Sports challenge pack.
+- [x] Campus challenge pack.
+- [x] Durable all-time global leaderboard API.
+- [x] PostgreSQL aggregation for global rankings.
+- [x] Redis fallback for global rankings.
+- [x] Public global rankings page.
+- [x] Home/profile rankings navigation.
+- [x] Automated leaderboard aggregation tests.
+
+Next:
+- [ ] Ranked matchmaking.
+- [ ] Rating / MMR progression.
+- [ ] Seasonal leaderboard resets.
+- [ ] Friends and private invites.
