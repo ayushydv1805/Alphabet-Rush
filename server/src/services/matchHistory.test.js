@@ -4,6 +4,7 @@ const {
   buildMatchRecord,
   calculatePlacement,
   calculateMatchDuration,
+  buildGlobalLeaderboardRows,
 } = require("./matchHistory");
 
 test("calculates placement with tied scores sharing rank order", () => {
@@ -72,4 +73,33 @@ test("builds a privacy-safe match summary", () => {
   assert.equal(record.players[0].correctAnswers, 14);
   assert.equal(record.players[1].placement, 2);
   assert.equal(record.durationSeconds, 360);
+});
+
+
+test("builds deterministic global leaderboard rows", () => {
+  const rows = buildGlobalLeaderboardRows([
+    {
+      playerId: "p2",
+      player_name: "Beta",
+      games_played: 2,
+      wins: 0,
+      total_points: 18,
+      total_correct_answers: 12,
+      best_streak: 3,
+    },
+    {
+      playerId: "p1",
+      player_name: "Alpha",
+      games_played: 3,
+      wins: 2,
+      total_points: 18,
+      total_correct_answers: 15,
+      best_streak: 5,
+    },
+  ]);
+
+  assert.equal(rows[0].playerId, "p1");
+  assert.equal(rows[0].averageScore, 6);
+  assert.equal(rows[0].wins, 2);
+  assert.equal(rows[1].playerId, "p2");
 });
