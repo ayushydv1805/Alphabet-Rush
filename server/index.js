@@ -29,14 +29,17 @@ async function startServer() {
   try {
     persistenceEnabled = await initRoomPersistence();
     restoredRooms = persistenceEnabled ? await hydrateRooms() : 0;
-    matchHistoryEnabled = await initMatchHistoryStore();
   } catch (error) {
     logError("room_persistence_startup_error", error);
-    await Promise.allSettled([
-      closeRoomPersistence(),
-      closeMatchHistoryStore(),
-    ]);
+    await closeRoomPersistence();
     persistenceEnabled = false;
+  }
+
+  try {
+    matchHistoryEnabled = await initMatchHistoryStore();
+  } catch (error) {
+    logError("match_history_startup_error", error);
+    await closeMatchHistoryStore();
     matchHistoryEnabled = false;
   }
 
