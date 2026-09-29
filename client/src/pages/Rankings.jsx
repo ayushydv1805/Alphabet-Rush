@@ -1,29 +1,28 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { fetchGlobalLeaderboard } from "../services/leaderboard";
 
 function Rankings() {
   const [leaderboard, setLeaderboard] = useState([]);
   const [state, setState] = useState("loading");
+  const [lastUpdated, setLastUpdated] = useState(null);
+
+  const loadLeaderboard = useCallback(async () => {
+    setState((current) => (current === "ready" ? "refreshing" : "loading"));
+
+    try {
+      const rows = await fetchGlobalLeaderboard(50);
+      setLeaderboard(rows);
+      setLastUpdated(new Date());
+      setState("ready");
+    } catch {
+      setState("error");
+    }
+  }, []);
 
   useEffect(() => {
-    let active = true;
-
-    fetchGlobalLeaderboard(50)
-      .then((rows) => {
-        if (!active) return;
-        setLeaderboard(rows);
-        setState("ready");
-      })
-      .catch(() => {
-        if (!active) return;
-        setState("error");
-      });
-
-    return () => {
-      active = false;
-    };
-  }, []);
+    loadLeaderboard();
+  }, [loadLeaderboard]);
 
   return (
     <main className="room-container rankings-page">
@@ -34,6 +33,7 @@ function Rankings() {
         </div>
 
         <div className="rankings-hero">
+
           <div className="rankings-icon" aria-hidden="true">🏆</div>
           <div>
             <p className="home-eyebrow">ALL-TIME LEADERBOARD</p>
@@ -42,6 +42,15 @@ function Rankings() {
               Long-term competition tracked across completed matches.
             </p>
           </div>
+
+          <button
+            className="rankings-refresh-btn"
+            type="button"
+            onClick={loadLeaderboard}
+            disabled={state === "loading" || state === "refreshing"}
+          >
+            {state === "refreshing" ? "↻ REFRESHING…" : "↻ REFRESH"}
+          </button>
         </div>
 
         {state === "loading" ? (
@@ -101,6 +110,12 @@ function Rankings() {
 
         <p className="rankings-note">
           Rankings are based on accumulated points from completed matches.
+          {lastUpdated
+            ? " · Updated " + lastUpdated.toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            : ""}
         </p>
 
         <Link className="profile-play-btn" to="/create-room">
