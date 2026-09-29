@@ -24,7 +24,10 @@ function Home() {
               <small>Lv. {profile.level} · {title.name}</small>
             </div>
           </div>
-          <Link className="profile-mini-link" to="/profile">PROFILE →</Link>
+          <div className="home-top-links">
+            <Link className="home-ranking-link" to="/rankings">🏆 RANKINGS</Link>
+            <Link className="profile-mini-link" to="/profile">PROFILE →</Link>
+          </div>
         </div>
 
         <div className="home-layout">
