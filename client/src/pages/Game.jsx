@@ -62,17 +62,28 @@ function Game() {
     const handleSubmissionValidated = (payload) => {
       if (payload?.roundId === gameData?.roundId) {
         setValidating(false);
+        setSubmitted(true);
       }
     };
 
-    const handleActionError = () => setValidating(false);
+    const handleActionError = () => {
+      setValidating(false);
+      setSubmitted(false);
+    };
+
+    const handleDisconnect = () => {
+      setValidating(false);
+      setSubmitted(false);
+    };
 
     socket.on("submissionValidated", handleSubmissionValidated);
     socket.on("actionError", handleActionError);
+    socket.on("disconnect", handleDisconnect);
 
     return () => {
       socket.off("submissionValidated", handleSubmissionValidated);
       socket.off("actionError", handleActionError);
+      socket.off("disconnect", handleDisconnect);
     };
   }, [gameData?.roundId]);
 
@@ -148,7 +159,6 @@ function Game() {
       answers,
     });
 
-    setSubmitted(true);
     setSubmittedPlayers((previousPlayers) =>
       previousPlayers.some((player) => player.playerId === socket.id)
         ? previousPlayers
@@ -268,6 +278,11 @@ function Game() {
               Waiting for the other players or the timer to finish the round.
             </span>
           </div>
+        ) : validating ? (
+          <div className="waiting-message game-waiting-state submission-feedback">
+            <strong>🤖 Verifying answers...</strong>
+            <span>Your answers are being checked. Please wait.</span>
+          </div>
         ) : null}
 
         <section className="answers-section" aria-label="Answer fields">
@@ -277,7 +292,7 @@ function Game() {
               {...field}
               value={answers[field.name]}
               onChange={handleChange}
-              disabled={submitted || timeLeft <= 0}
+              disabled={submitted || validating || timeLeft <= 0}
             />
           ))}
         </section>
@@ -286,15 +301,15 @@ function Game() {
           className="submit-answers-btn"
           type="button"
           onClick={handleSubmit}
-          disabled={submitted || timeLeft <= 0}
+          disabled={submitted || validating || timeLeft <= 0}
         >
           {validating
             ? "🤖 VERIFYING ANSWERS..."
             : submitted
               ? "✓ ANSWERS LOCKED"
-            : timeLeft <= 0
-              ? "TIME'S UP"
-              : "SUBMIT ANSWERS"}
+              : timeLeft <= 0
+                ? "TIME'S UP"
+                : "SUBMIT ANSWERS"}
         </button>
       </section>
     </main>
